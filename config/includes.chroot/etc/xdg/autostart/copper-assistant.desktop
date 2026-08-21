@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Copper First Start
+Exec=/usr/bin/python3 /opt/copperbars/copper_assistant.py
+Terminal=false
+OnlyShowIn=OPENBOX;
+X-GNOME-Autostart-enabled=true

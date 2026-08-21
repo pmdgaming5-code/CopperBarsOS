@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+MODEL_DIR=/opt/copperbars/models
+printf '\n=== CopperBarsOS Model Setup ===\n\n'
+printf 'Yerel GGUF klasörü: %s\n\n' "$MODEL_DIR"
+
+mkdir -p "$MODEL_DIR"
+
+if command -v ollama >/dev/null 2>&1; then
+  printf 'Ollama bulundu. Yerel modeller:\n\n'
+  ollama list || true
+else
+  printf 'Ollama kurulu değil. Copper, OpenAI-compatible localhost servislerini de kullanabilir.\n'
+fi
+
+printf '\nGGUF modelleri:\n'
+find "$MODEL_DIR" -maxdepth 1 -type f -iname '*.gguf' -printf '  %f\n' 2>/dev/null || true
+
+printf '\nCopper AI seçimini ortam değişkeniyle yapabilirsin:\n'
+printf '  COPPER_OLLAMA_MODEL=<model-adı>\n'
+printf '  COPPER_OLLAMA_URL=http://127.0.0.1:11434\n\n'
+printf 'Model dosyalarını bu klasöre koyduktan sonra Copper Center > Yenile seçeneğini kullan.\n'
+printf '\nNot: CopperBarsOS uzak bir model indirip çalıştırmaz; model seçimini kullanıcı yapar.\n'
+
+exec "${SHELL:-/bin/bash}"

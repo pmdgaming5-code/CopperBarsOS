@@ -1,0 +1,17 @@
+[Unit]
+Description=CopperBarsOS Local AI Assistant
+After=network.target graphical.target
+Wants=graphical.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/copperbars
+ExecStart=/usr/bin/python3 /opt/copperbars/copper_ai.py
+Restart=on-failure
+RestartSec=2
+Environment=COPPER_MODEL_DIR=/opt/copperbars/models
+Environment=COPPER_PORT=8765
+
+[Install]
+WantedBy=multi-user.target

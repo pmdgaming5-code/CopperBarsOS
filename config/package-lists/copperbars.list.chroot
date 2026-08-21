@@ -20,9 +20,11 @@ usbutils
 hwinfo
 inxi
 mesa-utils
+vulkan-tools
 pipewire
 wireplumber
 pavucontrol
+blueman
 firefox-esr
 thunar
 thunar-archive-plugin
@@ -52,3 +54,4 @@ xdg-utils
 dxvk
 dxvk-wine64
 libvkd3d1
+fwupd

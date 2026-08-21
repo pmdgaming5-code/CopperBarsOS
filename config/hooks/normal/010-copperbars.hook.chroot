@@ -5,7 +5,9 @@ if ! id copper >/dev/null 2>&1; then
   useradd --system --home /var/lib/copperbars --create-home --shell /usr/sbin/nologin copper
 fi
 
-install -d -o copper -g copper -m 0755 /opt/copperbars/models /var/lib/copperbars
+# The AI daemon owns model files, while desktop users can add/remove them.
+install -d -o copper -g users -m 0775 /opt/copperbars/models
+install -d -o copper -g copper -m 0755 /var/lib/copperbars
 chmod 0755 /opt/copperbars/copper_ai.py
 chmod 0755 /opt/copperbars/copper_assistant.py
 chmod 0755 /opt/copperbars/copper_center.py

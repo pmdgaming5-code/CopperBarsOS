@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+STATE=/var/lib/copperbars/firstboot-complete
+mkdir -p "$(dirname "$STATE")"
+
+if [ -f "$STATE" ]; then
+  exit 0
+fi
+
+# Keep the first boot deterministic: the AI service is started before the desktop.
+systemctl enable copper-ai.service || true
+systemctl start copper-ai.service || true
+
+cat > /tmp/copper-firstboot.html <<'HTML'
+<!doctype html>
+<html><head><meta charset="utf-8"><title>CopperBarsOS</title></head>
+<body style="font-family:sans-serif;background:#111;color:#eee;padding:48px">
+<h1>Welcome to CopperBarsOS</h1>
+<p>Your local AI assistant, Copper, is starting.</p>
+<p>If a GGUF model is installed, open <b>Copper Assistant</b> from the desktop menu.</p>
+<p>No cloud account is required for the local assistant.</p>
+</body></html>
+HTML
+
+# Do not mark complete until the service has had a chance to initialize.
+sleep 2
+printf '%s\n' "$(date -u +%FT%TZ)" > "$STATE"

@@ -3,7 +3,6 @@
 import json
 import os
 import platform
-import shutil
 import subprocess
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
@@ -31,6 +30,7 @@ class CopperCenter(tk.Tk):
         self.geometry("980x680")
         self.minsize(760, 520)
         self.configure(bg=BG)
+        self.boxes = {}
 
         tk.Label(self, text="Copper Center", bg=BG, fg=ACCENT,
                  font=("DejaVu Sans", 26, "bold")).pack(pady=(22, 3))
@@ -39,7 +39,6 @@ class CopperCenter(tk.Tk):
 
         body = tk.Frame(self, bg=BG)
         body.pack(fill=tk.BOTH, expand=True, padx=22, pady=8)
-
         self.card(body, "Copper AI", self.ai_status, 0, 0)
         self.card(body, "Sistem", self.system_info, 0, 1)
         self.card(body, "Donanım", self.hardware_info, 1, 0)
@@ -69,7 +68,7 @@ class CopperCenter(tk.Tk):
         out.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
         func(out)
         out.configure(state=tk.DISABLED)
-        setattr(self, f"{title.replace(' ', '_')}_box", out)
+        self.boxes[title] = out
 
     def button(self, parent, text, command):
         return tk.Button(parent, text=text, command=command, bg=ACCENT, fg="#101318",
@@ -99,7 +98,7 @@ class CopperCenter(tk.Tk):
             f"Mimari: {platform.machine()}\n"
             f"Kernel: {platform.release()}\n"
             f"Python: {platform.python_version()}\n"
-            f"Çalışma alanı: {os.environ.get('XDG_CURRENT_DESKTOP', 'XFCE')}\n"
+            f"Masaüstü: {os.environ.get('XDG_CURRENT_DESKTOP', 'XFCE')}\n"
         )
         self.fill(box, text)
 
@@ -110,10 +109,10 @@ class CopperCenter(tk.Tk):
         self.fill(box, run(["sh", "-c", "nmcli -t -f DEVICE,TYPE,STATE dev 2>/dev/null || true"]))
 
     def refresh(self):
-        self.ai_status(self.Copper_AI_box)
-        self.system_info(self.Sistem_box)
-        self.hardware_info(self.Donanım_box)
-        self.network_info(self.Ağ_box)
+        self.ai_status(self.boxes["Copper AI"])
+        self.system_info(self.boxes["Sistem"])
+        self.hardware_info(self.boxes["Donanım"])
+        self.network_info(self.boxes["Ağ"])
         self.status.configure(text="Bilgiler yenilendi")
 
     def open_ai(self):

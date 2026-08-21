@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Copper Windows Compatibility
-Name[tr]=Copper Windows Uyumluluğu
-Comment=Manage and run Windows applications with Wine
-Comment[tr]=Wine ile Windows uygulamalarını yönet ve çalıştır
+Name=CopperBars Windows Center
+Name[tr]=CopperBars Windows Merkezi
+Comment=Manage and run Windows applications with the CopperBars compatibility layer
+Comment[tr]=CopperBars uyumluluk katmanıyla Windows uygulamalarını yönet ve çalıştır
 Exec=/usr/bin/python3 /opt/copperbars/copper_windows.py
 Icon=wine
 Terminal=false

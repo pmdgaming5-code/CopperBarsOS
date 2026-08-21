@@ -44,6 +44,7 @@ zip
 bash-completion
 wine
 wine64
+wine32:i386
 wine-binfmt
 winetricks
 winbind
@@ -53,5 +54,6 @@ zenity
 xdg-utils
 dxvk
 dxvk-wine64
+dxvk-wine32:i386
 libvkd3d1
 fwupd

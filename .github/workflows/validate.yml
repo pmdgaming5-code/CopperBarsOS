@@ -1,0 +1,27 @@
+name: Validate CopperBarsOS
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax check
+        run: python3 -m py_compile config/includes.chroot/opt/copperbars/copper_ai.py config/includes.chroot/opt/copperbars/copper_assistant.py
+      - name: Shell syntax check
+        run: |
+          bash -n build.sh
+          sh -n config/includes.chroot/usr/local/bin/copper-firstboot
+          sh -n config/includes.chroot/usr/local/bin/copper-autostart
+          sh -n config/hooks/normal/010-copperbars.hook.chroot
+      - name: Required files
+        run: |
+          test -f README.md
+          test -f build.sh
+          test -f config/includes.chroot/etc/systemd/system/copper-ai.service
+          test -f config/includes.chroot/etc/systemd/system/copper-firstboot.service
+          test -f config/includes.chroot/opt/copperbars/copper_ai.py
+          test -f config/includes.chroot/opt/copperbars/copper_assistant.py

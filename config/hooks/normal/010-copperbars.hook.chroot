@@ -13,9 +13,11 @@ chmod 0755 /opt/copperbars/copper_assistant.py
 chmod 0755 /opt/copperbars/copper_center.py
 chmod 0755 /opt/copperbars/copper_store.py
 chmod 0755 /opt/copperbars/copper_welcome.py
+chmod 0755 /opt/copperbars/copper_windows.py
 chmod 0755 /usr/local/bin/copper-firstboot
 chmod 0755 /usr/local/bin/copper-autostart
 chmod 0755 /usr/local/bin/copper-model-setup
+chmod 0755 /usr/local/bin/copper-exe-handler
 
 systemctl enable copper-ai.service
 systemctl enable copper-firstboot.service

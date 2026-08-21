@@ -10,13 +10,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Python syntax check
-        run: python3 -m py_compile config/includes.chroot/opt/copperbars/copper_ai.py config/includes.chroot/opt/copperbars/copper_assistant.py
+        run: |
+          python3 -m compileall -q config/includes.chroot/opt/copperbars
       - name: Shell syntax check
         run: |
           bash -n build.sh
-          sh -n config/includes.chroot/usr/local/bin/copper-firstboot
-          sh -n config/includes.chroot/usr/local/bin/copper-autostart
-          sh -n config/hooks/normal/010-copperbars.hook.chroot
+          find config/includes.chroot/usr/local/bin config/hooks -type f -print0 | xargs -0 -n1 sh -n
       - name: Required files
         run: |
           test -f README.md
@@ -25,3 +24,11 @@ jobs:
           test -f config/includes.chroot/etc/systemd/system/copper-firstboot.service
           test -f config/includes.chroot/opt/copperbars/copper_ai.py
           test -f config/includes.chroot/opt/copperbars/copper_assistant.py
+          test -f config/includes.chroot/opt/copperbars/copper_center.py
+          test -f config/includes.chroot/usr/local/bin/copper-model-setup
+          test -f config/includes.chroot/usr/share/applications/copper-center.desktop
+      - name: Policy checks
+        run: |
+          grep -q 'User=copper' config/includes.chroot/etc/systemd/system/copper-ai.service
+          grep -q '127.0.0.1' config/includes.chroot/opt/copperbars/copper_ai.py
+          ! grep -R 'curl.*http' config/includes.chroot/opt/copperbars || true

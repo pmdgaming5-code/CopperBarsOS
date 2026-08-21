@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copper Center: a small native control panel for CopperBarsOS."""
+"""CopperBars Center: central control panel for CopperBarsOS."""
 import json
 import os
 import platform
@@ -23,33 +23,35 @@ def run(cmd):
         return f"Komut çalıştırılamadı: {exc}"
 
 
-class CopperCenter(tk.Tk):
+class CopperBarsCenter(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Copper Center — CopperBarsOS")
-        self.geometry("980x700")
-        self.minsize(760, 540)
+        self.title("CopperBars Center — CopperBarsOS")
+        self.geometry("1040x720")
+        self.minsize(800, 560)
         self.configure(bg=BG)
         self.boxes = {}
 
-        tk.Label(self, text="Copper Center", bg=BG, fg=ACCENT,
-                 font=("DejaVu Sans", 26, "bold")).pack(pady=(22, 3))
-        tk.Label(self, text="CopperBarsOS sistem merkezi", bg=BG, fg=MUTED,
+        tk.Label(self, text="CopperBars Center", bg=BG, fg=ACCENT,
+                 font=("DejaVu Sans", 27, "bold")).pack(pady=(22, 3))
+        tk.Label(self, text="CopperBarsOS sistem ve AI merkezi", bg=BG, fg=MUTED,
                  font=("DejaVu Sans", 11)).pack(pady=(0, 16))
 
         body = tk.Frame(self, bg=BG)
         body.pack(fill=tk.BOTH, expand=True, padx=22, pady=8)
-        self.card(body, "Copper AI", self.ai_status, 0, 0)
+        self.card(body, "Copperium AI", self.ai_status, 0, 0)
         self.card(body, "Sistem", self.system_info, 0, 1)
         self.card(body, "Donanım", self.hardware_info, 1, 0)
         self.card(body, "Ağ", self.network_info, 1, 1)
 
         buttons = tk.Frame(self, bg=BG)
-        buttons.pack(fill=tk.X, padx=22, pady=18)
-        self.button(buttons, "Copper'ı Aç", self.open_ai).pack(side=tk.LEFT, padx=(0, 10))
-        self.button(buttons, "Model Kurulumu", self.model_setup).pack(side=tk.LEFT, padx=10)
-        self.button(buttons, "Windows Uygulamaları", self.windows_center).pack(side=tk.LEFT, padx=10)
-        self.button(buttons, "Kurulum Aracını Aç", self.launch_installer).pack(side=tk.LEFT, padx=10)
+        buttons.pack(fill=tk.X, padx=22, pady=14)
+        self.button(buttons, "Copperium AI", self.open_ai).pack(side=tk.LEFT)
+        self.button(buttons, "AI Modeli", self.model_setup).pack(side=tk.LEFT, padx=8)
+        self.button(buttons, "Windows", self.windows_center).pack(side=tk.LEFT, padx=8)
+        self.button(buttons, "Güncellemeler", self.updates).pack(side=tk.LEFT, padx=8)
+        self.button(buttons, "Tanılama", self.diagnostics).pack(side=tk.LEFT, padx=8)
+        self.button(buttons, "Kurulum", self.launch_installer).pack(side=tk.LEFT, padx=8)
         self.button(buttons, "Yenile", self.refresh).pack(side=tk.RIGHT)
 
         self.status = tk.Label(self, text="Hazır", bg=BG, fg=MUTED, anchor="w")
@@ -86,11 +88,12 @@ class CopperCenter(tk.Tk):
     def ai_status(self, box):
         try:
             with urlopen(API, timeout=3) as response:
-                data = json.loads(response.read().decode())
+                data = json.loads(response.read().decode("utf-8"))
             model = data.get("model") or "Seçilmemiş"
             models = data.get("models") or []
             backend = data.get("backend") or "none"
-            self.fill(box, f"Servis: ÇALIŞIYOR\nBackend: {backend}\nModel: {model}\nGGUF dosyaları: {len(models)}\n\n{', '.join(models) if models else 'Henüz GGUF modeli yok.'}")
+            reachable = "evet" if data.get("ollama_reachable") else "hayır"
+            self.fill(box, f"Servis: ÇALIŞIYOR\nBackend: {backend}\nModel: {model}\nOllama: {reachable}\nGGUF: {len(models)}\n\n{', '.join(models) if models else 'Henüz GGUF modeli yok.'}")
         except Exception as exc:
             self.fill(box, f"Servis: BAĞLANILAMADI\n\n{exc}")
 
@@ -101,6 +104,7 @@ class CopperCenter(tk.Tk):
             f"Kernel: {platform.release()}\n"
             f"Python: {platform.python_version()}\n"
             f"Masaüstü: {os.environ.get('XDG_CURRENT_DESKTOP', 'XFCE')}\n"
+            f"Disk kökü: {run(['sh', '-c', 'df -h / | tail -1'])}\n"
         )
         self.fill(box, text)
 
@@ -111,7 +115,7 @@ class CopperCenter(tk.Tk):
         self.fill(box, run(["sh", "-c", "nmcli -t -f DEVICE,TYPE,STATE dev 2>/dev/null || true"]))
 
     def refresh(self):
-        self.ai_status(self.boxes["Copper AI"])
+        self.ai_status(self.boxes["Copperium AI"])
         self.system_info(self.boxes["Sistem"])
         self.hardware_info(self.boxes["Donanım"])
         self.network_info(self.boxes["Ağ"])
@@ -126,12 +130,18 @@ class CopperCenter(tk.Tk):
     def windows_center(self):
         subprocess.Popen(["/usr/bin/python3", "/opt/copperbars/copper_windows.py"])
 
+    def updates(self):
+        subprocess.Popen(["/usr/bin/python3", "/opt/copperbars/copper_updates.py"])
+
+    def diagnostics(self):
+        subprocess.Popen(["/usr/bin/python3", "/opt/copperbars/copper_diagnostics.py"])
+
     def launch_installer(self):
         try:
             subprocess.Popen(["pkexec", "calamares"])
         except Exception as exc:
-            messagebox.showerror("Kurulum", str(exc))
+            messagebox.showerror("CopperBars Kurulum", str(exc))
 
 
 if __name__ == "__main__":
-    CopperCenter().mainloop()
+    CopperBarsCenter().mainloop()

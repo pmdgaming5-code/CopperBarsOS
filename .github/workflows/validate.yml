@@ -28,15 +28,21 @@ jobs:
           test -f config/includes.chroot/opt/copperbars/copper_center.py
           test -f config/includes.chroot/opt/copperbars/copper_store.py
           test -f config/includes.chroot/opt/copperbars/copper_welcome.py
+          test -f config/includes.chroot/opt/copperbars/copper_windows.py
           test -f config/includes.chroot/opt/copperbars/apps.json
           test -f config/includes.chroot/usr/local/bin/copper-model-setup
+          test -f config/includes.chroot/usr/local/bin/copper-exe-handler
+          test -f config/hooks/normal/020-wine-multiarch.hook.chroot
           test -f config/includes.chroot/usr/share/applications/copper-center.desktop
           test -f config/includes.chroot/usr/share/applications/copper-store.desktop
           test -f config/includes.chroot/usr/share/applications/copper-assistant.desktop
+          test -f config/includes.chroot/usr/share/applications/copper-windows.desktop
       - name: Policy checks
         run: |
           grep -q 'User=copper' config/includes.chroot/etc/systemd/system/copper-ai.service
           grep -q '127.0.0.1' config/includes.chroot/opt/copperbars/copper_ai.py
+          grep -q 'wine' config/package-lists/copperbars.list.chroot
+          grep -q 'dxvk' config/package-lists/copperbars.list.chroot
           if grep -R 'curl.*http' config/includes.chroot/opt/copperbars; then
             echo 'Unexpected remote curl usage found.' >&2
             exit 1

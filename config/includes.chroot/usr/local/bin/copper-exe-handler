@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+EXE="${1:-}"
+[ -n "$EXE" ] || exit 2
+[ -f "$EXE" ] || { command -v zenity >/dev/null 2>&1 && zenity --error --text="Windows EXE dosyası bulunamadı."; exit 1; }
+
+NAME=$(basename "$EXE" .exe)
+SAFE=$(printf '%s' "$NAME" | tr -c '[:alnum:]._-' '_')
+PREFIX="$HOME/.local/share/copperbars/wine/$SAFE"
+mkdir -p "$PREFIX"
+
+export WINEPREFIX="$PREFIX"
+export WINEARCH=win64
+
+if ! command -v wine >/dev/null 2>&1; then
+  command -v zenity >/dev/null 2>&1 && zenity --error --text="Wine kurulu değil. Copper Store'dan Wine Windows Uyumluluğu paketini kur." || true
+  exit 1
+fi
+
+if [ ! -d "$PREFIX/drive_c" ]; then
+  wineboot -u >/dev/null 2>&1 || {
+    command -v zenity >/dev/null 2>&1 && zenity --error --text="Wine ortamı oluşturulamadı." || true
+    exit 1
+  }
+fi
+
+exec wine "$EXE"

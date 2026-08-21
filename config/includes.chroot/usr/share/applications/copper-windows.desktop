@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Copper Windows Application
+Name[tr]=Copper Windows Uygulaması
+Comment=Run Windows EXE files with CopperBarsOS Wine compatibility
+Comment[tr]=Windows EXE dosyalarını CopperBarsOS Wine uyumluluğuyla çalıştır
+Exec=/usr/local/bin/copper-exe-handler %f
+Icon=wine
+Terminal=false
+Categories=System;Utility;
+MimeType=application/x-ms-dos-executable;application/vnd.microsoft.portable-executable;
+NoDisplay=false

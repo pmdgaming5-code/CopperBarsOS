@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+# CopperBarsOS is amd64 but supports legacy 32-bit Windows software too.
+dpkg --add-architecture i386
+apt-get update
+apt-get install -y --no-install-recommends wine32:i386 dxvk-wine32:i386
+rm -rf /var/lib/apt/lists/*

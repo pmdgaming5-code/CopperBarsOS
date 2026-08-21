@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=CopperBars Files
+Name[tr]=CopperBars Dosyalar
+Comment=Browse and manage files
+Comment[tr]=Dosyaları görüntüle ve yönet
+Exec=thunar
+Icon=system-file-manager
+Terminal=false
+Categories=System;Utility;FileManager;

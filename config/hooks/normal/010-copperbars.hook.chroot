@@ -1,10 +1,17 @@
 #!/bin/sh
 set -eu
 
+if ! id copper >/dev/null 2>&1; then
+  useradd --system --home /var/lib/copperbars --create-home --shell /usr/sbin/nologin copper
+fi
+
+install -d -o copper -g copper -m 0755 /opt/copperbars/models /var/lib/copperbars
 chmod 0755 /opt/copperbars/copper_ai.py
 chmod 0755 /opt/copperbars/copper_assistant.py
+chmod 0755 /opt/copperbars/copper_center.py
 chmod 0755 /usr/local/bin/copper-firstboot
 chmod 0755 /usr/local/bin/copper-autostart
-mkdir -p /opt/copperbars/models /var/lib/copperbars
+chmod 0755 /usr/local/bin/copper-model-setup
+
 systemctl enable copper-ai.service
 systemctl enable copper-firstboot.service

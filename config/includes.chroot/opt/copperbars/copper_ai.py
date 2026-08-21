@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""CopperBarsOS local AI gateway.
-
-The gateway is intentionally backend-agnostic and stays on localhost.
-It prefers a locally installed Ollama model and falls back honestly when
-no local model is configured.
-"""
+"""Copperium AI local gateway for CopperBarsOS."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -16,12 +11,13 @@ PORT = int(os.environ.get("COPPER_PORT", "8765"))
 MODEL_DIR = pathlib.Path(os.environ.get("COPPER_MODEL_DIR", "/opt/copperbars/models"))
 MODEL_CONFIG = pathlib.Path("/var/lib/copperbars/model.conf")
 OLLAMA_URL = os.environ.get("COPPER_OLLAMA_URL", "http://127.0.0.1:11434")
+VERSION = "0.2.0"
 
 SYSTEM_PROMPT = (
-    "You are Copper, the friendly local AI assistant built into CopperBarsOS. "
+    "You are Copperium AI, the local AI assistant built into CopperBarsOS. "
     "Speak Turkish when the user speaks Turkish. Be concise, accurate, and "
     "clear about what you can and cannot do. Never claim internet access or "
-    "system changes unless they actually occurred."
+    "system changes unless they actually occurred. Never invent tool results."
 )
 
 
@@ -43,6 +39,16 @@ def installed_models():
         p.name for p in MODEL_DIR.iterdir()
         if p.is_file() and p.suffix.lower() == ".gguf"
     )
+
+
+def ollama_status():
+    try:
+        request = urllib.request.Request(OLLAMA_URL.rstrip("/") + "/api/tags", method="GET")
+        with urllib.request.urlopen(request, timeout=3) as response:
+            data = json.load(response)
+        return {"reachable": True, "models": data.get("models", [])}
+    except Exception:
+        return {"reachable": False, "models": []}
 
 
 def ollama_chat(message):
@@ -83,11 +89,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             model = selected_model()
+            ollama = ollama_status() if model else {"reachable": False, "models": []}
             self._json(200, {
                 "ok": True,
+                "service": "Copperium AI",
+                "version": VERSION,
                 "models": installed_models(),
                 "model": model,
                 "backend": "ollama" if model else "none",
+                "ollama_reachable": ollama["reachable"],
                 "local_only": True,
             })
             return
@@ -103,23 +113,24 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("invalid content length")
             body = json.loads(self.rfile.read(length) or b"{}")
             message = str(body.get("message", "")).strip()
-            if not message:
-                raise ValueError("message is required")
+            if not message or len(message) > 20000:
+                raise ValueError("invalid message")
         except (ValueError, json.JSONDecodeError):
             self._json(400, {"error": "invalid request"})
             return
 
+        model = selected_model()
         answer = ollama_chat(message)
         if answer is None:
-            if selected_model():
-                answer = "Copper'a yerel model bağlı görünüyor ama model servisine şu anda ulaşılamıyor. Copper Center'dan AI durumunu kontrol et."
+            if model:
+                answer = "Copperium AI seçilen yerel modele bağlanamadı. CopperBars Center üzerinden AI durumunu kontrol et."
             else:
                 answer = (
-                    "Merhaba! Ben Copper. Henüz bir yerel AI modeli seçilmemiş. "
-                    "İlk kurulum ekranından model seçebilir veya Copper Center'dan "
+                    "Merhaba! Ben Copperium AI. Henüz bir yerel AI modeli seçilmemiş. "
+                    "CopperBars ilk kurulumundan model seçebilir veya CopperBars Center'dan "
                     "yerel model yapılandırabilirsin."
                 )
-        self._json(200, {"answer": answer, "local": True, "model": selected_model()})
+        self._json(200, {"answer": answer, "local": True, "model": model, "service": "Copperium AI"})
 
     def log_message(self, *_):
         return

@@ -27,8 +27,8 @@ class CopperCenter(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Copper Center — CopperBarsOS")
-        self.geometry("980x680")
-        self.minsize(760, 520)
+        self.geometry("980x700")
+        self.minsize(760, 540)
         self.configure(bg=BG)
         self.boxes = {}
 
@@ -48,6 +48,7 @@ class CopperCenter(tk.Tk):
         buttons.pack(fill=tk.X, padx=22, pady=18)
         self.button(buttons, "Copper'ı Aç", self.open_ai).pack(side=tk.LEFT, padx=(0, 10))
         self.button(buttons, "Model Kurulumu", self.model_setup).pack(side=tk.LEFT, padx=10)
+        self.button(buttons, "Windows Uygulamaları", self.windows_center).pack(side=tk.LEFT, padx=10)
         self.button(buttons, "Kurulum Aracını Aç", self.launch_installer).pack(side=tk.LEFT, padx=10)
         self.button(buttons, "Yenile", self.refresh).pack(side=tk.RIGHT)
 
@@ -73,7 +74,7 @@ class CopperCenter(tk.Tk):
     def button(self, parent, text, command):
         return tk.Button(parent, text=text, command=command, bg=ACCENT, fg="#101318",
                          activebackground="#f0a244", activeforeground="#101318",
-                         relief=tk.FLAT, padx=16, pady=9, cursor="hand2")
+                         relief=tk.FLAT, padx=13, pady=9, cursor="hand2")
 
     @staticmethod
     def fill(box, text):
@@ -88,7 +89,8 @@ class CopperCenter(tk.Tk):
                 data = json.loads(response.read().decode())
             model = data.get("model") or "Seçilmemiş"
             models = data.get("models") or []
-            self.fill(box, f"Servis: ÇALIŞIYOR\nModel: {model}\nGGUF dosyaları: {len(models)}\n\n{', '.join(models) if models else 'Henüz GGUF modeli yok.'}")
+            backend = data.get("backend") or "none"
+            self.fill(box, f"Servis: ÇALIŞIYOR\nBackend: {backend}\nModel: {model}\nGGUF dosyaları: {len(models)}\n\n{', '.join(models) if models else 'Henüz GGUF modeli yok.'}")
         except Exception as exc:
             self.fill(box, f"Servis: BAĞLANILAMADI\n\n{exc}")
 
@@ -119,7 +121,10 @@ class CopperCenter(tk.Tk):
         subprocess.Popen(["/usr/bin/python3", "/opt/copperbars/copper_assistant.py"])
 
     def model_setup(self):
-        subprocess.Popen(["/usr/bin/x-terminal-emulator", "-e", "/usr/local/bin/copper-model-setup"])
+        subprocess.Popen(["/usr/bin/python3", "/opt/copperbars/copper_welcome.py"])
+
+    def windows_center(self):
+        subprocess.Popen(["/usr/bin/python3", "/opt/copperbars/copper_windows.py"])
 
     def launch_installer(self):
         try:

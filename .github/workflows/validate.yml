@@ -10,8 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Python syntax check
-        run: |
-          python3 -m compileall -q config/includes.chroot/opt/copperbars
+        run: python3 -m compileall -q config/includes.chroot/opt/copperbars
       - name: Shell syntax check
         run: |
           bash -n build.sh
@@ -31,4 +30,7 @@ jobs:
         run: |
           grep -q 'User=copper' config/includes.chroot/etc/systemd/system/copper-ai.service
           grep -q '127.0.0.1' config/includes.chroot/opt/copperbars/copper_ai.py
-          ! grep -R 'curl.*http' config/includes.chroot/opt/copperbars || true
+          if grep -R 'curl.*http' config/includes.chroot/opt/copperbars; then
+            echo 'Unexpected remote curl usage found.' >&2
+            exit 1
+          fi

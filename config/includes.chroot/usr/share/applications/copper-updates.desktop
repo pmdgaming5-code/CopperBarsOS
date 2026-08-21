@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=CopperBars Updates
+Name[tr]=CopperBars Güncellemeler
+Comment=Update CopperBarsOS safely
+Comment[tr]=CopperBarsOS güncellemelerini yönet
+Exec=/usr/bin/python3 /opt/copperbars/copper_updates.py
+Icon=system-software-update
+Terminal=false
+Categories=System;Settings;

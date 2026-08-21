@@ -10,5 +10,8 @@
   {"id":"thunderbird","name":"Thunderbird","category":"İnternet","package":"thunderbird","description":"E-posta ve iletişim istemcisi."},
   {"id":"audacity","name":"Audacity","category":"Multimedya","package":"audacity","description":"Ses kaydı ve düzenleme uygulaması."},
   {"id":"filezilla","name":"FileZilla","category":"İnternet","package":"filezilla","description":"FTP/SFTP istemcisi."},
-  {"id":"git","name":"Git","category":"Geliştirme","package":"git","description":"Sürüm kontrol aracı."}
+  {"id":"git","name":"Git","category":"Geliştirme","package":"git","description":"Sürüm kontrol aracı."},
+  {"id":"wine","name":"Wine Windows Uyumluluğu","category":"Windows Uygulamaları","package":"wine","description":"Windows EXE uygulamalarını Linux üzerinde çalıştırmak için uyumluluk katmanı.","featured":true},
+  {"id":"winetricks","name":"Winetricks","category":"Windows Uygulamaları","package":"winetricks","description":"Wine ortamlarında yaygın DLL ve uyumluluk ayarlarını yönetir."},
+  {"id":"dxvk","name":"DXVK","category":"Windows Uygulamaları","package":"dxvk","description":"Direct3D 8/9/10/11 uygulamalarını Vulkan üzerinden hızlandırır."}
 ]

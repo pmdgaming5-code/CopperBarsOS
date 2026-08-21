@@ -1,0 +1,13 @@
+[Unit]
+Description=CopperBarsOS first boot setup
+After=copper-ai.service graphical.target
+Wants=copper-ai.service
+ConditionPathExists=!/var/lib/copperbars/firstboot-complete
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/copper-firstboot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

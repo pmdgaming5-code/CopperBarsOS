@@ -5,6 +5,7 @@ STATE="${XDG_CONFIG_HOME:-$HOME/.config}/copperbars/first-start-complete"
 
 if [ ! -f "$STATE" ]; then
   mkdir -p "$(dirname "$STATE")"
+  /usr/bin/python3 /opt/copperbars/copper_welcome.py
   /usr/bin/python3 /opt/copperbars/copper_assistant.py
   date -u +%FT%TZ > "$STATE"
 fi

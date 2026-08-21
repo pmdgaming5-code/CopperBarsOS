@@ -1,0 +1,14 @@
+[
+  {"id":"firefox","name":"Firefox","category":"İnternet","package":"firefox-esr","description":"Güçlü ve açık kaynaklı web tarayıcısı.","featured":true},
+  {"id":"libreoffice","name":"LibreOffice","category":"Ofis","package":"libreoffice","description":"Belge, hesap tablosu ve sunum araçları.","featured":true},
+  {"id":"vlc","name":"VLC","category":"Multimedya","package":"vlc","description":"Çok sayıda medya biçimini oynatabilen medya oynatıcı.","featured":true},
+  {"id":"gimp","name":"GIMP","category":"Grafik","package":"gimp","description":"Gelişmiş görüntü düzenleme uygulaması."},
+  {"id":"inkscape","name":"Inkscape","category":"Grafik","package":"inkscape","description":"Vektör grafik tasarımı için araç."},
+  {"id":"kdenlive","name":"Kdenlive","category":"Multimedya","package":"kdenlive","description":"Video düzenleme uygulaması."},
+  {"id":"obs","name":"OBS Studio","category":"Multimedya","package":"obs-studio","description":"Ekran kaydı ve canlı yayın uygulaması."},
+  {"id":"steam","name":"Steam","category":"Oyun","package":"steam-installer","description":"Linux üzerinde Steam kurulum paketi."},
+  {"id":"thunderbird","name":"Thunderbird","category":"İnternet","package":"thunderbird","description":"E-posta ve iletişim istemcisi."},
+  {"id":"audacity","name":"Audacity","category":"Multimedya","package":"audacity","description":"Ses kaydı ve düzenleme uygulaması."},
+  {"id":"filezilla","name":"FileZilla","category":"İnternet","package":"filezilla","description":"FTP/SFTP istemcisi."},
+  {"id":"git","name":"Git","category":"Geliştirme","package":"git","description":"Sürüm kontrol aracı."}
+]

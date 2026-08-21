@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=CopperBars Diagnostics
+Name[tr]=CopperBars Tanılama
+Comment=Read-only health and compatibility checks
+Comment[tr]=Salt okunur sistem sağlık ve uyumluluk kontrolleri
+Exec=/usr/bin/python3 /opt/copperbars/copper_diagnostics.py
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Settings;

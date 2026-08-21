@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copper Store: curated software center for CopperBarsOS."""
+"""CopperBars Store: curated software center for CopperBarsOS."""
 import json
 import os
 import subprocess
@@ -21,7 +21,7 @@ def load_catalog():
     with open(CATALOG, "r", encoding="utf-8") as fh:
         data = json.load(fh)
     if not isinstance(data, list):
-        raise ValueError("Geçersiz Copper Store kataloğu")
+        raise ValueError("Geçersiz CopperBars Store kataloğu")
     for app in data:
         if not isinstance(app, dict) or not app.get("id") or not app.get("name") or not app.get("package"):
             raise ValueError("Geçersiz uygulama kaydı")
@@ -44,10 +44,10 @@ def run_privileged(action, package):
     )
 
 
-class CopperStore(tk.Tk):
+class CopperBarsStore(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Copper Store — CopperBarsOS")
+        self.title("CopperBars Store — CopperBarsOS")
         self.geometry("1040x720")
         self.minsize(820, 560)
         self.configure(bg=BG)
@@ -56,9 +56,9 @@ class CopperStore(tk.Tk):
 
         header = tk.Frame(self, bg=BG)
         header.pack(fill=tk.X, padx=24, pady=(22, 10))
-        tk.Label(header, text="Copper Store", bg=BG, fg=ACCENT,
+        tk.Label(header, text="CopperBars Store", bg=BG, fg=ACCENT,
                  font=("DejaVu Sans", 27, "bold")).pack(anchor="w")
-        tk.Label(header, text="Güvenilir ve seçilmiş Linux uygulamaları", bg=BG, fg=MUTED,
+        tk.Label(header, text="Seçilmiş ve sistem paket yöneticisiyle yönetilen uygulamalar", bg=BG, fg=MUTED,
                  font=("DejaVu Sans", 11)).pack(anchor="w", pady=(2, 12))
 
         bar = tk.Frame(header, bg=BG)
@@ -77,7 +77,7 @@ class CopperStore(tk.Tk):
         self.list_frame.pack(fill=tk.BOTH, expand=True, padx=24, pady=10)
         self.refresh_list()
 
-        tk.Label(self, text="Uygulamalar sistemin APT altyapısından kurulur. Mağaza yalnızca doğrulanmış katalog paketlerini çağırır.",
+        tk.Label(self, text="CopperBars Store yalnızca katalogdaki paket adlarını APT üzerinden çağırır.",
                  bg=BG, fg=MUTED, anchor="w").pack(fill=tk.X, padx=24, pady=(0, 14))
 
     def refresh_list(self):
@@ -100,7 +100,6 @@ class CopperStore(tk.Tk):
         canvas.configure(yscrollcommand=scroll.set)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
         for app in self.filtered:
             self.render_app(content, app)
 
@@ -109,13 +108,12 @@ class CopperStore(tk.Tk):
         card.pack(fill=tk.X, pady=6)
         left = tk.Frame(card, bg=PANEL)
         left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=16, pady=14)
-        tk.Label(left, text=app["name"], bg=PANEL, fg=TEXT,
+        tk.Label(left, text=f"CopperBars • {app['name']}", bg=PANEL, fg=TEXT,
                  font=("DejaVu Sans", 14, "bold")).pack(anchor="w")
         tk.Label(left, text=f"{app['category']} • {app['package']}", bg=PANEL, fg=ACCENT,
                  font=("DejaVu Sans", 9, "bold")).pack(anchor="w", pady=(2, 5))
         tk.Label(left, text=app["description"], bg=PANEL, fg=MUTED,
                  wraplength=650, justify="left", anchor="w").pack(anchor="w")
-
         installed = apt_installed(app["package"])
         button = tk.Button(card, text="Kaldır" if installed else "Kur",
                            command=lambda a=app, i=installed: self.change(a, i),
@@ -134,9 +132,9 @@ class CopperStore(tk.Tk):
                     raise RuntimeError((result.stderr or result.stdout or "APT işlemi başarısız.").strip())
                 self.after(0, lambda: (self.config(cursor=""), self.refresh_list()))
             except Exception as exc:
-                self.after(0, lambda: (self.config(cursor=""), messagebox.showerror("Copper Store", str(exc))))
+                self.after(0, lambda: (self.config(cursor=""), messagebox.showerror("CopperBars Store", str(exc))))
         threading.Thread(target=worker, daemon=True).start()
 
 
 if __name__ == "__main__":
-    CopperStore().mainloop()
+    CopperBarsStore().mainloop()

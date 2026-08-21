@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Copper Center
-Name[tr]=Copper Sistem Merkezi
+Name=CopperBars Center
+Name[tr]=CopperBars Sistem Merkezi
 Comment=CopperBarsOS system and AI control center
 Comment[tr]=CopperBarsOS sistem ve AI merkezi
 Exec=/usr/bin/python3 /opt/copperbars/copper_center.py

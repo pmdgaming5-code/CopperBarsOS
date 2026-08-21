@@ -11,6 +11,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Python syntax check
         run: python3 -m compileall -q config/includes.chroot/opt/copperbars
+      - name: JSON validation
+        run: python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null
       - name: Shell syntax check
         run: |
           bash -n build.sh
@@ -24,8 +26,13 @@ jobs:
           test -f config/includes.chroot/opt/copperbars/copper_ai.py
           test -f config/includes.chroot/opt/copperbars/copper_assistant.py
           test -f config/includes.chroot/opt/copperbars/copper_center.py
+          test -f config/includes.chroot/opt/copperbars/copper_store.py
+          test -f config/includes.chroot/opt/copperbars/copper_welcome.py
+          test -f config/includes.chroot/opt/copperbars/apps.json
           test -f config/includes.chroot/usr/local/bin/copper-model-setup
           test -f config/includes.chroot/usr/share/applications/copper-center.desktop
+          test -f config/includes.chroot/usr/share/applications/copper-store.desktop
+          test -f config/includes.chroot/usr/share/applications/copper-assistant.desktop
       - name: Policy checks
         run: |
           grep -q 'User=copper' config/includes.chroot/etc/systemd/system/copper-ai.service

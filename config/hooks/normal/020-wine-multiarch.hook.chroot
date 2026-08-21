@@ -1,8 +1,16 @@
 #!/bin/sh
 set -eu
 
-# CopperBarsOS is amd64 but supports legacy 32-bit Windows software too.
-dpkg --add-architecture i386
-apt-get update
-apt-get install -y --no-install-recommends wine32:i386 dxvk-wine32:i386
-rm -rf /var/lib/apt/lists/*
+# Foreign-architecture packages are declared in the package list so
+# live-build enables i386 before installing Wine components.
+if ! dpkg --print-foreign-architectures | grep -qx 'i386'; then
+  echo 'CopperBarsOS: i386 foreign architecture was not enabled.' >&2
+  exit 1
+fi
+
+for package in wine32:i386 dxvk-wine32:i386; do
+  dpkg-query -W -f='${Status}\n' "$package" 2>/dev/null | grep -q 'install ok installed' || {
+    echo "CopperBarsOS: required package is missing: $package" >&2
+    exit 1
+  }
+done

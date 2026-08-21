@@ -42,9 +42,13 @@ zip
 bash-completion
 wine
 wine64
-wine32
 wine-binfmt
 winetricks
 winbind
 cabextract
 p7zip-full
+zenity
+xdg-utils
+dxvk
+dxvk-wine64
+libvkd3d1

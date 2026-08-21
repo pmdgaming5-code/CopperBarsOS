@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+chmod 0755 /opt/copperbars/copper_ai.py
+chmod 0755 /opt/copperbars/copper_assistant.py
+chmod 0755 /usr/local/bin/copper-firstboot
+mkdir -p /opt/copperbars/models /var/lib/copperbars
+systemctl enable copper-ai.service
+systemctl enable copper-firstboot.service

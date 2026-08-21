@@ -1,5 +1,5 @@
 [Unit]
-Description=CopperBarsOS Local AI Assistant
+Description=Copperium AI Local Service
 After=network.target
 Wants=network.target
 

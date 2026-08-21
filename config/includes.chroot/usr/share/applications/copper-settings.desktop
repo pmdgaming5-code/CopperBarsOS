@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=CopperBars Settings
+Name[tr]=CopperBars Ayarlar
+Comment=Configure the CopperBarsOS desktop
+Comment[tr]=CopperBarsOS masaüstünü yapılandır
+Exec=xfce4-settings-manager
+Icon=preferences-system
+Terminal=false
+Categories=Settings;System;

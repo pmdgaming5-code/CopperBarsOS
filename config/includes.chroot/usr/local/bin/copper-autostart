@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+STATE=/var/lib/copperbars/firstboot-complete
+
+if [ ! -f "$STATE" ]; then
+  /usr/bin/python3 /opt/copperbars/copper_assistant.py
+  mkdir -p "$(dirname "$STATE")"
+  date -u +%FT%TZ > "$STATE"
+fi

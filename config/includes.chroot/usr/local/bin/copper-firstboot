@@ -2,12 +2,14 @@
 set -eu
 
 STATE=/var/lib/copperbars/firstboot-complete
+STATUS=/var/lib/copperbars/firstboot-status
 mkdir -p "$(dirname "$STATE")"
 
 systemctl enable copper-ai.service || true
 systemctl start copper-ai.service || true
 
-# A small marker allows the XFCE autostart helper to open Copper exactly once.
-# It is intentionally not created here; the GUI helper creates it after the
-# first-start window has actually been shown.
-printf '%s\n' "CopperBarsOS first boot prepared at $(date -u +%FT%TZ)" > /var/lib/copperbars/firstboot-status
+# System-level initialization is complete once the AI daemon has been started.
+# The graphical autostart helper separately tracks whether the current desktop
+# user has already seen the Copper welcome window.
+printf '%s\n' "CopperBarsOS first boot prepared at $(date -u +%FT%TZ)" > "$STATUS"
+printf '%s\n' "$(date -u +%FT%TZ)" > "$STATE"

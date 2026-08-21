@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """CopperBarsOS local AI gateway.
 
-The gateway is intentionally backend-agnostic. It prefers a local Ollama
-instance and can be switched to another local OpenAI-compatible endpoint.
-No remote endpoint is contacted by default.
+The service only binds to localhost. A selected Ollama model is read from
+/var/lib/copperbars/model.conf; the environment variable can override it.
 """
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import json, os, pathlib, urllib.request
+import json
+import os
+import pathlib
+import urllib.request
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("COPPER_PORT", "8765"))
 MODEL_DIR = pathlib.Path(os.environ.get("COPPER_MODEL_DIR", "/opt/copperbars/models"))
+MODEL_CONFIG = pathlib.Path("/var/lib/copperbars/model.conf")
 OLLAMA_URL = os.environ.get("COPPER_OLLAMA_URL", "http://127.0.0.1:11434")
-MODEL = os.environ.get("COPPER_MODEL", "")
+ENV_MODEL = os.environ.get("COPPER_MODEL", "").strip()
 
 SYSTEM_PROMPT = (
     "You are Copper, the friendly local AI assistant built into CopperBarsOS. "
@@ -22,14 +25,34 @@ SYSTEM_PROMPT = (
 )
 
 
+def selected_model():
+    if ENV_MODEL:
+        return ENV_MODEL
+    try:
+        value = MODEL_CONFIG.read_text(encoding="utf-8").strip()
+        return value or ""
+    except OSError:
+        return ""
+
+
 def installed_models():
     if not MODEL_DIR.exists():
         return []
-    return [p.name for p in MODEL_DIR.iterdir() if p.is_file() and p.suffix.lower() == ".gguf"]
+    return sorted(p.name for p in MODEL_DIR.iterdir()
+                  if p.is_file() and p.suffix.lower() == ".gguf")
+
+
+def ollama_models():
+    try:
+        with urllib.request.urlopen(OLLAMA_URL.rstrip("/") + "/api/tags", timeout=4) as response:
+            data = json.load(response)
+        return [str(item.get("name", "")) for item in data.get("models", []) if item.get("name")]
+    except Exception:
+        return []
 
 
 def ollama_chat(message):
-    model = MODEL or os.environ.get("COPPER_OLLAMA_MODEL", "")
+    model = selected_model()
     if not model:
         return None
     payload = json.dumps({
@@ -39,7 +62,7 @@ def ollama_chat(message):
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": message},
         ],
-    }).encode()
+    }).encode("utf-8")
     req = urllib.request.Request(
         OLLAMA_URL.rstrip("/") + "/api/chat",
         data=payload,
@@ -47,7 +70,7 @@ def ollama_chat(message):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as response:
+        with urllib.request.urlopen(req, timeout=180) as response:
             data = json.load(response)
         return data.get("message", {}).get("content")
     except Exception:
@@ -56,7 +79,7 @@ def ollama_chat(message):
 
 class Handler(BaseHTTPRequestHandler):
     def _json(self, status, data):
-        raw = json.dumps(data, ensure_ascii=False).encode()
+        raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
@@ -65,7 +88,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            self._json(200, {"ok": True, "models": installed_models(), "model": MODEL})
+            model = selected_model()
+            self._json(200, {
+                "ok": True,
+                "model": model,
+                "gguf_models": installed_models(),
+                "ollama_models": ollama_models(),
+                "backend": "ollama" if model else "none",
+            })
             return
         self._json(404, {"error": "not found"})
 
@@ -75,21 +105,24 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            body = json.loads(self.rfile.read(length) or b"{}")
+            if length <= 0 or length > 128 * 1024:
+                raise ValueError("invalid body size")
+            body = json.loads(self.rfile.read(length))
             message = str(body.get("message", "")).strip()
-            if not message:
-                raise ValueError("message is required")
+            if not message or len(message) > 12000:
+                raise ValueError("invalid message")
         except (ValueError, json.JSONDecodeError):
             self._json(400, {"error": "invalid request"})
             return
 
         answer = ollama_chat(message)
         if answer is None:
-            answer = (
-                "Merhaba! Ben Copper. Şu anda yerel bir model bağlı değil. "
-                "Bir GGUF modelini /opt/copperbars/models/ klasörüne ekleyebilir "
-                "veya yerel Ollama modelini COPPER_OLLAMA_MODEL ile seçebilirsin."
-            )
+            model = selected_model()
+            if model:
+                detail = f"Seçilen model: {model}; ancak yerel AI motorundan yanıt alınamadı."
+            else:
+                detail = "Henüz yerel bir model seçilmedi. Copper Center'dan bir model seçebilirsin."
+            answer = "Merhaba! Ben Copper. " + detail
         self._json(200, {"answer": answer, "local": True})
 
     def log_message(self, *_):

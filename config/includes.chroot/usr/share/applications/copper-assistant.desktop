@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Copper AI Assistant
+Name[tr]=Copper AI Yardımcısı
+Comment=CopperBarsOS local AI assistant
+Exec=/usr/bin/python3 /opt/copperbars/copper_assistant.py
+Icon=utilities-terminal
+Terminal=false
+Categories=Utility;System;

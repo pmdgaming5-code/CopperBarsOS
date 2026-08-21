@@ -1,7 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=Copper First Start
+Name[tr]=Copper İlk Başlangıç
 Exec=/usr/local/bin/copper-autostart
 Terminal=false
-OnlyShowIn=OPENBOX;
+OnlyShowIn=XFCE;
 X-GNOME-Autostart-enabled=true

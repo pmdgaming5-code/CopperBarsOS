@@ -1,18 +1,13 @@
 #!/bin/sh
 set -eu
 
-# Start the local AI backend. The graphical session decides when the
-# first-run assistant has actually been shown to the user.
+STATE=/var/lib/copperbars/firstboot-complete
+mkdir -p "$(dirname "$STATE")"
+
 systemctl enable copper-ai.service || true
 systemctl start copper-ai.service || true
 
-mkdir -p /var/lib/copperbars
-cat > /tmp/copper-firstboot.html <<'HTML'
-<!doctype html>
-<html><head><meta charset="utf-8"><title>CopperBarsOS</title></head>
-<body style="font-family:sans-serif;background:#111;color:#eee;padding:48px">
-<h1>Welcome to CopperBarsOS</h1>
-<p>Your local AI assistant, Copper, is starting.</p>
-<p>No cloud account is required for the local assistant.</p>
-</body></html>
-HTML
+# A small marker allows the XFCE autostart helper to open Copper exactly once.
+# It is intentionally not created here; the GUI helper creates it after the
+# first-start window has actually been shown.
+printf '%s\n' "CopperBarsOS first boot prepared at $(date -u +%FT%TZ)" > /var/lib/copperbars/firstboot-status

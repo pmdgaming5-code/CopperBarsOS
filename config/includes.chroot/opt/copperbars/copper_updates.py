@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""CopperBars Update Center: APT + GitHub Release updates.
-
-GitHub releases are public and are treated as untrusted input until their
-SHA-256 checksum is verified. Release bundles are staged in a temporary
-folder and installed by the privileged CopperBars updater helper.
-"""
+"""CopperBars Update Center: APT + GitHub Release updates."""
 import hashlib
 import json
 import pathlib
@@ -79,7 +74,10 @@ def download(url, destination):
 
 
 def verify_sha256(path, checksum_path):
-    expected = checksum_path.read_text(encoding="utf-8").strip().split()[0].lower()
+    tokens = checksum_path.read_text(encoding="utf-8").strip().split()
+    if not tokens:
+        raise RuntimeError("Checksum dosyası boş.")
+    expected = tokens[0].lower()
     digest = hashlib.sha256()
     with open(path, "rb") as fh:
         for chunk in iter(lambda: fh.read(1024 * 1024), b""):
@@ -87,6 +85,7 @@ def verify_sha256(path, checksum_path):
     actual = digest.hexdigest().lower()
     if actual != expected:
         raise RuntimeError("SHA-256 doğrulaması başarısız. Dosya silindi ve kurulmadı.")
+    return actual
 
 
 class CopperBarsUpdates(tk.Tk):
@@ -148,14 +147,13 @@ class CopperBarsUpdates(tk.Tk):
 
     def _check(self):
         lines = [f"Kurulu CopperBarsOS: {local_version()}"]
-        release = None
         try:
             release = github_release()
             self.release = release
-            latest = release.get("tag_name", "")
-            lines.append(f"GitHub son sürüm: {latest or 'yayın yok'}")
+            latest_text = release.get("tag_name", "")
+            lines.append(f"GitHub son sürüm: {latest_text or 'yayın yok'}")
             try:
-                available = parse_version(latest) > parse_version(local_version())
+                available = parse_version(latest_text) > parse_version(local_version())
             except ValueError:
                 available = False
             lines.append(f"OS sürümü güncel mi: {'HAYIR' if available else 'EVET / bilinmiyor'}")
@@ -200,7 +198,7 @@ class CopperBarsUpdates(tk.Tk):
                 raise RuntimeError("Release doğrulanabilir güncelleme paketi içermiyor.")
             if not messagebox.askyesno(
                 "CopperBars Update",
-                f"CopperBarsOS {latest_text} sürümü indirilsin ve kuruluma hazırlansın?\n\nKurulumdan önce otomatik yedek alınır.",
+                f"CopperBarsOS {latest_text} sürümü indirilsin ve kurulum için hazırlanıp yüklensin?\n\nKurulumdan önce otomatik yedek alınır.",
                 parent=self,
             ):
                 return
@@ -219,12 +217,12 @@ class CopperBarsUpdates(tk.Tk):
                 checksum_path = pathlib.Path(tmp) / checksum["name"]
                 download(bundle["browser_download_url"], bundle_path)
                 download(checksum["browser_download_url"], checksum_path)
-                verify_sha256(bundle_path, checksum_path)
+                actual_sha = verify_sha256(bundle_path, checksum_path)
                 self.after(0, lambda: self.write(
-                    f"Checksum doğrulandı.\n\nRelease: {version}\nPaket: {bundle['name']}\n\nKurulum için yönetici izni isteniyor…"
+                    f"Checksum doğrulandı.\n\nRelease: {version}\nPaket: {bundle['name']}\nSHA-256: {actual_sha}\n\nKurulum için yönetici izni isteniyor…"
                 ))
                 result = subprocess.run(
-                    ["pkexec", INSTALL_HELPER, str(bundle_path), version],
+                    ["pkexec", INSTALL_HELPER, str(bundle_path), version, actual_sha],
                     text=True, capture_output=True, timeout=1800,
                 )
                 if result.returncode != 0:

@@ -1,0 +1,28 @@
+name: CopperBarsOS Candidate ISO Result
+
+on:
+  workflow_run:
+    workflows:
+      - CopperBarsOS Candidate ISO Build
+    types:
+      - completed
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report candidate build result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          BODY="CopperBarsOS candidate ISO build completed.\n\n- Run ID: ${RUN_ID}\n- Run number: ${RUN_NUMBER}\n- Conclusion: ${CONCLUSION}\n- Head SHA: ${HEAD_SHA}\n- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+          gh issue comment 1 --repo "$GITHUB_REPOSITORY" --body "$BODY"

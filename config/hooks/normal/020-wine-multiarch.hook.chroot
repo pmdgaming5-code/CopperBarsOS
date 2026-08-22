@@ -1,17 +1,13 @@
 #!/bin/sh
 set -eu
 
-# Wine 32-bit support is installed only after the normal package list has
-# completed, because i386 must be enabled before foreign-architecture packages
-# can be resolved.
-if ! dpkg --print-foreign-architectures | grep -qx 'i386'; then
-  dpkg --add-architecture i386
-fi
-
+# CopperBarsOS is amd64 but supports legacy 32-bit Windows software too.
+# live-build installs amd64 packages before this hook; enable i386 here and
+# install only the foreign-architecture Wine/DXVK components afterwards.
+dpkg --add-architecture i386
 apt-get update
 apt-get install -y --no-install-recommends wine32:i386 dxvk-wine32:i386
 rm -rf /var/lib/apt/lists/*
 
-# Fail the image build if multiarch support was not actually installed.
-dpkg-query -W -f='${Status}\n' wine32:i386 | grep -q 'install ok installed'
-dpkg-query -W -f='${Status}\n' dxvk-wine32:i386 | grep -q 'install ok installed'
+# Fail the build if the compatibility stack is incomplete.
+dpkg-query -W -f='${Status}\n' wine32:i386 dxvk-wine32:i386 2>/dev/null | grep -c 'install ok installed' | grep -qx '2'

@@ -1,3 +1,4 @@
+# Debian Trixie package set; keep this list preflightable by CI.
 live-boot
 live-config
 systemd-sysv

@@ -68,6 +68,25 @@ jobs:
               lb config --help 2>&1 | grep -Fq -- "--distribution-chroot"
               lb config --help 2>&1 | grep -Fq -- "--distribution-binary"
 
+              # Release builds use the exact same package graph as CI.
+              # Preflight it before invoking live-build so obsolete Trixie package
+              # names fail in seconds instead of after a long ISO build.
+              dpkg --add-architecture i386
+              apt-get update
+              check_package() {
+                pkg="$1"
+                candidate="$(apt-cache policy "$pkg" | awk "/^  Candidate:/ {print \$2; exit}")"
+                if [ -z "$candidate" ] || [ "$candidate" = "(none)" ]; then
+                  echo "No install candidate for package: $pkg" >&2
+                  exit 1
+                fi
+              }
+              while IFS= read -r pkg; do
+                check_package "$pkg"
+              done < <(sed -e "s/#.*$//" -e "/^[[:space:]]*$/d" config/package-lists/copperbars.list.chroot)
+              check_package "wine32:i386"
+              check_package "dxvk-wine32:i386"
+
               bash -n build.sh
               bash -n tools/build-update-bundle.sh
               find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
@@ -87,12 +106,13 @@ jobs:
           set -euo pipefail
           test -s dist/CopperBarsOS-x86_64.iso
           test -s dist/CopperBarsOS-x86_64.iso.sha256
-          test -s dist/CopperBarsOS-*-update.tar.gz
-          test -s dist/CopperBarsOS-*-update.tar.gz.sha256
+          shopt -s nullglob
+          bundles=(dist/CopperBarsOS-*-update.tar.gz)
+          checksums=(dist/CopperBarsOS-*-update.tar.gz.sha256)
+          test "${#bundles[@]}" -eq 1
+          test "${#checksums[@]}" -eq 1
           sha256sum -c dist/CopperBarsOS-x86_64.iso.sha256
-          for file in dist/CopperBarsOS-*-update.tar.gz; do
-            sha256sum -c "$file.sha256"
-          done
+          sha256sum -c "${checksums[0]}"
           xorriso -indev dist/CopperBarsOS-x86_64.iso -toc >/tmp/copperbarsos-release-toc.txt
           test -s /tmp/copperbarsos-release-toc.txt
 

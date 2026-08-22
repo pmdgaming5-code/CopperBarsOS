@@ -1,0 +1,90 @@
+name: CopperBarsOS Release Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-24.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            live-build debootstrap squashfs-tools xorriso \
+            grub-pc-bin grub-efi-amd64-bin mtools dosfstools \
+            qemu-system-x86 qemu-utils ovmf
+
+      - name: Validate version
+        run: |
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if [[ "${GITHUB_REF_NAME}" == v* && "${GITHUB_REF_NAME#v}" != "$VERSION" ]]; then
+            echo "Git tag ${GITHUB_REF_NAME} does not match VERSION $VERSION" >&2
+            exit 1
+          fi
+
+      - name: Build ISO
+        run: ./build.sh
+
+      - name: Build GitHub update bundle
+        run: ./tools/build-update-bundle.sh
+
+      - name: Verify artifacts
+        run: |
+          test -s dist/CopperBarsOS-x86_64.iso
+          test -s dist/CopperBarsOS-x86_64.iso.sha256
+          test -s dist/CopperBarsOS-*-update.tar.gz
+          test -s dist/CopperBarsOS-*-update.tar.gz.sha256
+          sha256sum -c dist/CopperBarsOS-x86_64.iso.sha256
+          for file in dist/CopperBarsOS-*-update.tar.gz; do
+            sha256sum -c "$file.sha256"
+          done
+
+      - name: Boot smoke test (BIOS)
+        run: |
+          timeout 45s qemu-system-x86_64 \
+            -machine accel=tcg \
+            -m 2048 \
+            -smp 2 \
+            -drive format=raw,file=dist/CopperBarsOS-x86_64.iso,media=cdrom,readonly=on \
+            -serial stdio \
+            -display none || test $? -eq 124
+
+      - name: Upload CI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CopperBarsOS-${{ github.sha }}
+          path: |
+            dist/CopperBarsOS-x86_64.iso
+            dist/CopperBarsOS-x86_64.iso.sha256
+            dist/CopperBarsOS-*-update.tar.gz
+            dist/CopperBarsOS-*-update.tar.gz.sha256
+          retention-days: 14
+
+      - name: Publish GitHub release for tags
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            --title "CopperBarsOS $VERSION" \
+            --generate-notes \
+            dist/CopperBarsOS-x86_64.iso \
+            dist/CopperBarsOS-x86_64.iso.sha256 \
+            dist/CopperBarsOS-${VERSION}-update.tar.gz \
+            dist/CopperBarsOS-${VERSION}-update.tar.gz.sha256

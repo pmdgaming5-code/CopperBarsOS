@@ -3,7 +3,11 @@ set -euo pipefail
 
 # live-build needs root privileges for chroot, mount and filesystem operations.
 if [[ "$(id -u)" -ne 0 ]]; then
-  exec sudo -E -- "$0" "$@"
+  if command -v sudo >/dev/null 2>&1; then
+    exec sudo -E -- "$0" "$@"
+  fi
+  echo "CopperBarsOS build requires root privileges (run as root or install sudo)." >&2
+  exit 1
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,30 +23,25 @@ command -v lb >/dev/null || {
   exit 1
 }
 
-# Debian Trixie's live-build is the supported builder. Fail early instead of
-# accidentally using an older host distro implementation with different CLI semantics.
-LB_MIN_VERSION="20250505+deb13u1"
-LB_VERSION="$(lb --version 2>&1 | head -n1)"
-if command -v dpkg >/dev/null 2>&1; then
-  if ! dpkg --compare-versions "$LB_VERSION" ge "$LB_MIN_VERSION"; then
-    echo "Unsupported live-build: $LB_VERSION" >&2
-    echo "CopperBarsOS requires Debian Trixie's live-build ($LB_MIN_VERSION or newer)." >&2
-    exit 1
-  fi
-else
-  case "$LB_VERSION" in
-    2025*|2026*) ;;
-    *)
-      echo "Unsupported live-build: $LB_VERSION" >&2
-      exit 1
-      ;;
-  esac
+# Read the installed Debian package version instead of parsing lb --version text.
+LB_MIN_VERSION="1:20250505+deb13u1"
+LB_VERSION="$(dpkg-query -W -f='${Version}' live-build 2>/dev/null || true)"
+if [[ -z "$LB_VERSION" ]]; then
+  echo "Could not determine the installed live-build package version." >&2
+  exit 1
+fi
+if ! dpkg --compare-versions "$LB_VERSION" ge "$LB_MIN_VERSION"; then
+  echo "Unsupported live-build: $LB_VERSION" >&2
+  echo "CopperBarsOS requires Debian Trixie's live-build ($LB_MIN_VERSION or newer)." >&2
+  exit 1
 fi
 
+# Debian Trixie's live-build supports these distribution selectors; verify the
+# actual installed CLI before using them so a mismatched builder fails early.
 for option in --distribution-chroot --distribution-binary; do
   if ! lb config --help 2>&1 | grep -Fq -- "$option"; then
     echo "Installed live-build does not support required option: $option" >&2
-    echo "Detected live-build: $LB_VERSION" >&2
+    echo "Detected live-build package: $LB_VERSION" >&2
     exit 1
   fi
 done
@@ -58,7 +57,6 @@ export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 DEBIAN_MIRROR="https://deb.debian.org/debian"
 DEBIAN_SECURITY_MIRROR="https://deb.debian.org/debian-security"
 
-# Debian Trixie is the single source of truth for all live-build CLI options.
 lb config \
   --mode debian \
   --architecture amd64 \

@@ -1,0 +1,76 @@
+#!/bin/sh
+set -eu
+
+BUNDLE=${1:-}
+VERSION=${2:-}
+EXPECTED_SHA=${3:-}
+BACKUP_ROOT=/var/backups/copperbars
+STAGE=$(mktemp -d /var/tmp/copperbars-stage.XXXXXX)
+BACKUP="$BACKUP_ROOT/$(date -u +%Y%m%dT%H%M%SZ)"
+
+cleanup() { rm -rf "$STAGE"; }
+trap cleanup EXIT INT TERM
+
+[ "$(id -u)" -eq 0 ] || { echo "Root yetkisi gerekli." >&2; exit 2; }
+[ -f "$BUNDLE" ] || { echo "Güncelleme paketi bulunamadı." >&2; exit 3; }
+case "$VERSION" in
+  v[0-9]*.[0-9]*.[0-9]*|[0-9]*.[0-9]*.[0-9]*) ;;
+  *) echo "Geçersiz sürüm: $VERSION" >&2; exit 4 ;;
+esac
+case "$EXPECTED_SHA" in
+  ''|*[!0-9a-fA-F]*) echo "Geçersiz SHA-256." >&2; exit 5 ;;
+esac
+
+ACTUAL_SHA=$(sha256sum "$BUNDLE" | awk '{print tolower($1)}')
+EXPECTED_SHA=$(printf '%s' "$EXPECTED_SHA" | tr '[:upper:]' '[:lower:]')
+[ "$ACTUAL_SHA" = "$EXPECTED_SHA" ] || { echo "SHA-256 doğrulaması başarısız." >&2; exit 6; }
+
+# Reject absolute paths, parent traversal and unexpected top-level paths.
+if tar -tzf "$BUNDLE" | awk '
+  /^// {bad=1}
+  /(^|\/)[.][.]\// {bad=1}
+  /(^|\/)[.][.]$/ {bad=1}
+  {split($0,p,"/"); if (p[1] != "opt" && p[1] != "etc" && p[1] != "usr") bad=1}
+  END {exit bad}
+'; then :; else
+  echo "Güncelleme arşivi güvenli bir path yapısına sahip değil." >&2
+  exit 7
+fi
+
+mkdir -p "$STAGE" "$BACKUP"
+tar -xzf "$BUNDLE" -C "$STAGE" --no-same-owner --no-same-permissions
+
+# Keep a rollback snapshot of the exact payload trees before replacing them.
+for path in opt/copperbars etc/systemd/system/copper-ai.service etc/systemd/system/copper-firstboot.service usr/local/bin usr/share/applications; do
+  if [ -e "/$path" ]; then
+    mkdir -p "$BACKUP/$(dirname "$path")"
+    cp -a "/$path" "$BACKUP/$(dirname "$path")/"
+  fi
+done
+
+# Copy only the release overlay. Existing unrelated files remain untouched.
+if [ -d "$STAGE/opt/copperbars" ]; then
+  mkdir -p /opt/copperbars
+  cp -a "$STAGE/opt/copperbars/." /opt/copperbars/
+fi
+if [ -f "$STAGE/etc/systemd/system/copper-ai.service" ]; then
+  cp -a "$STAGE/etc/systemd/system/copper-ai.service" /etc/systemd/system/
+fi
+if [ -f "$STAGE/etc/systemd/system/copper-firstboot.service" ]; then
+  cp -a "$STAGE/etc/systemd/system/copper-firstboot.service" /etc/systemd/system/
+fi
+for dir in usr/local/bin usr/share/applications; do
+  if [ -d "$STAGE/$dir" ]; then
+    mkdir -p "/$dir"
+    cp -a "$STAGE/$dir/." "/$dir/"
+  fi
+done
+
+if [ -d /opt/copperbars ]; then
+  chmod 0755 /opt/copperbars/*.py 2>/dev/null || true
+fi
+systemctl daemon-reload
+systemctl try-restart copper-ai.service 2>/dev/null || true
+
+echo "CopperBarsOS $VERSION güncellemesi kuruldu."
+echo "Yedek: $BACKUP"

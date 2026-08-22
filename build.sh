@@ -66,8 +66,7 @@ lb config \
   --iso-application "CopperBarsOS" \
   --iso-publisher "CopperBarsOS Project" \
   --iso-volume "COPPERBARSOS" \
-  --memtest none \
-  --uefi-secure-boot auto
+  --memtest none
 
 lb build
 

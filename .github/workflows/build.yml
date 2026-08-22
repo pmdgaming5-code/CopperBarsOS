@@ -9,12 +9,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: copperbarsos-iso-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       DEBIAN_FRONTEND: noninteractive
+      SOURCE_DATE_EPOCH: "0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +30,19 @@ jobs:
           sudo apt-get install -y \
             live-build debootstrap squashfs-tools xorriso \
             grub-pc-bin grub-efi-amd64-bin mtools dosfstools \
-            qemu-system-x86 ovmf
+            qemu-system-x86 qemu-utils ovmf shellcheck python3
+
+      - name: Validate repository scripts
+        run: |
+          set -euo pipefail
+          test -x build.sh
+          test -x tools/build-update-bundle.sh
+          bash -n build.sh
+          bash -n tools/build-update-bundle.sh
+          find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
+          shellcheck build.sh tools/build-update-bundle.sh
+          python3 -m compileall -q config/includes.chroot/opt/copperbars
+          python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null
 
       - name: Build ISO
         run: ./build.sh
@@ -37,22 +54,31 @@ jobs:
         run: |
           set -euo pipefail
           test -s dist/CopperBarsOS-x86_64.iso
+          test -s dist/CopperBarsOS-x86_64.iso.sha256
           sha256sum -c dist/CopperBarsOS-x86_64.iso.sha256
-          for checksum in dist/CopperBarsOS-*-update.tar.gz.sha256; do
-            sha256sum -c "$checksum"
-          done
+          shopt -s nullglob
+          bundles=(dist/CopperBarsOS-*-update.tar.gz)
+          checksums=(dist/CopperBarsOS-*-update.tar.gz.sha256)
+          test "${#bundles[@]}" -eq 1
+          test "${#checksums[@]}" -eq 1
+          sha256sum -c "${checksums[0]}"
+          file dist/CopperBarsOS-x86_64.iso
+          xorriso -indev dist/CopperBarsOS-x86_64.iso -toc >/tmp/copperbarsos-iso-toc.txt
+          test -s /tmp/copperbarsos-iso-toc.txt
 
       - name: QEMU BIOS smoke test
         run: |
           set +e
-          timeout 40s qemu-system-x86_64 \
-            -machine accel=tcg \
+          timeout 60s qemu-system-x86_64 \
+            -machine accel=tcg:tcg \
             -m 2048 \
             -smp 2 \
-            -drive format=raw,file=dist/CopperBarsOS-x86_64.iso,media=cdrom,readonly=on \
+            -cdrom dist/CopperBarsOS-x86_64.iso \
+            -boot d \
             -display none \
             -serial stdio
           code=$?
+          set -e
           if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then
             exit "$code"
           fi
@@ -61,6 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CopperBarsOS-${{ github.sha }}
+          if-no-files-found: error
           path: |
             dist/CopperBarsOS-x86_64.iso
             dist/CopperBarsOS-x86_64.iso.sha256

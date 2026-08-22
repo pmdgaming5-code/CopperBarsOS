@@ -46,7 +46,6 @@ bash-completion
 wine
 wine64
 wine-binfmt
-winetricks
 winbind
 cabextract
 p7zip-full

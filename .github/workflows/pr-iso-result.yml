@@ -1,0 +1,32 @@
+name: CopperBarsOS PR ISO Result
+
+on:
+  workflow_run:
+    workflows:
+      - CopperBarsOS PR ISO Build
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report build result on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER="$(jq -r '.workflow_run.pull_requests[0].number // empty' "$GITHUB_EVENT_PATH")"
+          if [ -z "$PR_NUMBER" ]; then
+            exit 0
+          fi
+          BODY="CopperBarsOS PR ISO Build completed.\n\n- Run ID: ${RUN_ID}\n- Run number: ${RUN_NUMBER}\n- Conclusion: ${CONCLUSION}\n- Head SHA: ${HEAD_SHA}\n- Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$BODY"

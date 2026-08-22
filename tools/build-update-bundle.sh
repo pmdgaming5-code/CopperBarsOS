@@ -15,16 +15,22 @@ BUNDLE="dist/CopperBarsOS-${VERSION}-update.tar.gz"
 rm -f "$BUNDLE" "$BUNDLE.sha256"
 
 # Only ship the OS's own overlay. No arbitrary repository files are included.
+# Keep this manifest aligned with the image's built-in CopperBars desktop.
 tar -czf "$BUNDLE" \
   -C config/includes.chroot \
   opt/copperbars \
   etc/systemd/system/copper-ai.service \
   etc/systemd/system/copper-firstboot.service \
+  etc/xdg/autostart/copperbars-desktop-setup.desktop \
+  etc/skel/.config/gtk-3.0/gtk.css \
   usr/local/bin/copper-autostart \
   usr/local/bin/copper-firstboot \
   usr/local/bin/copper-model-setup \
   usr/local/bin/copper-exe-handler \
   usr/local/bin/copperbars-release-updater \
+  usr/local/bin/copperbars-desktop-setup \
+  usr/local/bin/copperium-spotlight \
+  usr/share/copperbars/panel/config.txt \
   usr/share/applications/copper-assistant.desktop \
   usr/share/applications/copper-center.desktop \
   usr/share/applications/copper-store.desktop \

@@ -1,0 +1,20 @@
+/* CopperBarsOS desktop styling. Kept intentionally small so it layers on
+ * top of the installed Xfce/GTK theme instead of replacing accessibility
+ * and widget behavior. */
+#docklike-plugin {
+  -GtkWidget-focus-line-width: 0;
+}
+#docklike-plugin button {
+  min-height: 40px;
+  min-width: 40px;
+  padding: 4px;
+  border-radius: 8px;
+}
+#docklike-plugin .active_group {
+  border-bottom-width: 3px;
+  border-bottom-style: solid;
+}
+#docklike-plugin .window_count {
+  font-size: 9px;
+  font-weight: 700;
+}

@@ -1,0 +1,69 @@
+name: CopperBarsOS ISO Build
+
+on:
+  push:
+    branches:
+      - feature/copperbarsos-core
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            live-build debootstrap squashfs-tools xorriso \
+            grub-pc-bin grub-efi-amd64-bin mtools dosfstools \
+            qemu-system-x86 ovmf
+
+      - name: Build ISO
+        run: ./build.sh
+
+      - name: Build update bundle
+        run: ./tools/build-update-bundle.sh
+
+      - name: Validate artifacts
+        run: |
+          set -euo pipefail
+          test -s dist/CopperBarsOS-x86_64.iso
+          sha256sum -c dist/CopperBarsOS-x86_64.iso.sha256
+          for checksum in dist/CopperBarsOS-*-update.tar.gz.sha256; do
+            sha256sum -c "$checksum"
+          done
+
+      - name: QEMU BIOS smoke test
+        run: |
+          set +e
+          timeout 40s qemu-system-x86_64 \
+            -machine accel=tcg \
+            -m 2048 \
+            -smp 2 \
+            -drive format=raw,file=dist/CopperBarsOS-x86_64.iso,media=cdrom,readonly=on \
+            -display none \
+            -serial stdio
+          code=$?
+          if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then
+            exit "$code"
+          fi
+
+      - name: Upload ISO and update bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: CopperBarsOS-${{ github.sha }}
+          path: |
+            dist/CopperBarsOS-x86_64.iso
+            dist/CopperBarsOS-x86_64.iso.sha256
+            dist/CopperBarsOS-*-update.tar.gz
+            dist/CopperBarsOS-*-update.tar.gz.sha256
+          retention-days: 14

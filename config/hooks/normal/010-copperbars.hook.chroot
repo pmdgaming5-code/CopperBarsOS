@@ -8,16 +8,12 @@ fi
 # The AI daemon owns model files, while desktop users can add/remove them.
 install -d -o copper -g users -m 0775 /opt/copperbars/models
 install -d -o copper -g copper -m 0755 /var/lib/copperbars
-chmod 0755 /opt/copperbars/copper_ai.py
-chmod 0755 /opt/copperbars/copper_assistant.py
-chmod 0755 /opt/copperbars/copper_center.py
-chmod 0755 /opt/copperbars/copper_store.py
-chmod 0755 /opt/copperbars/copper_welcome.py
-chmod 0755 /opt/copperbars/copper_windows.py
+chmod 0755 /opt/copperbars/*.py
 chmod 0755 /usr/local/bin/copper-firstboot
 chmod 0755 /usr/local/bin/copper-autostart
 chmod 0755 /usr/local/bin/copper-model-setup
 chmod 0755 /usr/local/bin/copper-exe-handler
+chmod 0755 /usr/local/bin/copperbars-release-updater
 
 systemctl enable copper-ai.service
 systemctl enable copper-firstboot.service

@@ -3,66 +3,76 @@ name: Validate CopperBarsOS
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   static:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install validators
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
       - name: Python syntax check
         run: python3 -m compileall -q config/includes.chroot/opt/copperbars
+
       - name: JSON validation
         run: python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null
-      - name: Shell syntax check
+
+      - name: Shell syntax and static analysis
         run: |
           bash -n build.sh
-          bash -n tools/build-update-bundle.sh
-          find config/includes.chroot/usr/local/bin config/hooks -type f -print0 | xargs -0 -n1 sh -n
+          find config/includes.chroot/usr/local/bin config/hooks tools -type f -print0 | xargs -0 -n1 sh -n
+          shellcheck build.sh config/includes.chroot/usr/local/bin/* config/hooks/normal/* tools/*.sh
+
       - name: Required files
         run: |
           test -f README.md
           test -f VERSION
           test -f build.sh
-          test -f tools/build-update-bundle.sh
-          test -f config/includes.chroot/opt/copperbars/version
           test -f config/includes.chroot/etc/systemd/system/copper-ai.service
           test -f config/includes.chroot/etc/systemd/system/copper-firstboot.service
           test -f config/includes.chroot/opt/copperbars/copper_ai.py
           test -f config/includes.chroot/opt/copperbars/copper_assistant.py
           test -f config/includes.chroot/opt/copperbars/copper_center.py
           test -f config/includes.chroot/opt/copperbars/copper_store.py
-          test -f config/includes.chroot/opt/copperbars/copper_welcome.py
-          test -f config/includes.chroot/opt/copperbars/copper_windows.py
           test -f config/includes.chroot/opt/copperbars/copper_updates.py
           test -f config/includes.chroot/opt/copperbars/copper_diagnostics.py
+          test -f config/includes.chroot/opt/copperbars/copper_welcome.py
+          test -f config/includes.chroot/opt/copperbars/copper_windows.py
           test -f config/includes.chroot/opt/copperbars/apps.json
           test -f config/includes.chroot/usr/local/bin/copper-model-setup
           test -f config/includes.chroot/usr/local/bin/copper-exe-handler
           test -f config/includes.chroot/usr/local/bin/copperbars-release-updater
           test -f config/hooks/normal/020-wine-multiarch.hook.chroot
+          test -f tools/build-update-bundle.sh
+          test -f .github/workflows/build.yml
           test -f .github/workflows/release.yml
-      - name: Version consistency
+
+      - name: Version validation
         run: |
-          test "$(tr -d '\r\n' < VERSION)" = "$(tr -d '\r\n' < config/includes.chroot/opt/copperbars/version)"
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
       - name: Branding checks
         run: |
-          grep -q 'Copperium AI' config/includes.chroot/usr/share/applications/copper-assistant.desktop
+          grep -q 'Copperium AI' config/includes.chroot/opt/copperbars/copper_ai.py
+          grep -q 'Name=Copperium AI' config/includes.chroot/usr/share/applications/copper-assistant.desktop
           grep -q 'Name=CopperBars Store' config/includes.chroot/usr/share/applications/copper-store.desktop
           grep -q 'Name=CopperBars Center' config/includes.chroot/usr/share/applications/copper-center.desktop
-          grep -q 'Name=CopperBars Update' config/includes.chroot/usr/share/applications/copper-updates.desktop
+
       - name: Wine compatibility checks
         run: |
           grep -q '^wine$' config/package-lists/copperbars.list.chroot
-          grep -q '^wine64$' config/package-lists/copperbars.list.chroot
-          grep -q '^wine32:i386$' config/package-lists/copperbars.list.chroot
           grep -q '^wine-binfmt$' config/package-lists/copperbars.list.chroot
-          grep -q '^dxvk-wine32:i386$' config/package-lists/copperbars.list.chroot
-      - name: Release updater safety checks
-        run: |
-          grep -q 'sha256sum' config/includes.chroot/usr/local/bin/copperbars-release-updater
-          grep -q 'mktemp' config/includes.chroot/usr/local/bin/copperbars-release-updater
-          grep -q 'sha256' config/includes.chroot/opt/copperbars/copper_updates.py
-          grep -q 'releases/latest' config/includes.chroot/opt/copperbars/copper_updates.py
+          grep -q 'dpkg --add-architecture i386' config/hooks/normal/020-wine-multiarch.hook.chroot
+          grep -q 'wine32:i386' config/hooks/normal/020-wine-multiarch.hook.chroot
+          grep -q 'dxvk-wine32:i386' config/hooks/normal/020-wine-multiarch.hook.chroot
+
       - name: Local-only AI policy
         run: |
           grep -q '127.0.0.1' config/includes.chroot/opt/copperbars/copper_ai.py

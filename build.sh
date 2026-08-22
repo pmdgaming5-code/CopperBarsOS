@@ -2,7 +2,6 @@
 set -euo pipefail
 
 # live-build needs root privileges for chroot, mount and filesystem operations.
-# Re-exec with sudo when invoked by a normal user so local builds are less error-prone.
 if [[ "$(id -u)" -ne 0 ]]; then
   exec sudo -E -- "$0" "$@"
 fi
@@ -16,62 +15,40 @@ if [[ "$(uname -m)" != "x86_64" ]]; then
 fi
 
 command -v lb >/dev/null || {
-  echo "live-build is required. Install it with: sudo apt install live-build" >&2
+  echo "live-build is required." >&2
   exit 1
 }
 
-# Guard against distro-specific live-build packages silently accepting an
-# incompatible configuration. This is intentionally checked before any state
-# is generated so a broken runner fails with an actionable message.
-required_lb_options=(
-  --mode
-  --architecture
-  --distribution
-  --archive-areas
-  --mirror-bootstrap
-  --mirror-chroot
-  --mirror-binary
-  --mirror-chroot-security
-  --mirror-binary-security
-  --binary-images
-  --bootappend-live
-  --debian-installer
-  --apt-recommends
-  --apt-secure
-  --linux-flavours
-  --firmware-binary
-  --firmware-chroot
-  --iso-application
-  --iso-publisher
-  --iso-volume
-  --memtest
-)
-
-lb_help="$(lb config --help 2>&1 || true)"
-for option in "${required_lb_options[@]}"; do
-  if ! grep -Fq -- "$option" <<<"$lb_help"; then
-    echo "Installed live-build does not support required option: $option" >&2
-    echo "Detected live-build: $(lb --version 2>&1 | head -n1)" >&2
+# Debian Trixie's live-build is the supported builder. Fail early instead of
+# accidentally using an older host distro implementation with different CLI semantics.
+lb_version="$(lb --version 2>&1 | head -n1)"
+case "$lb_version" in
+  *3.0~a5*) ;;
+  *)
+    echo "Unsupported live-build: $lb_version" >&2
+    echo "CopperBarsOS requires the Debian Trixie live-build package (1:20250505+deb13u1 or newer)." >&2
     exit 1
-  fi
-done
+    ;;
+esac
 
-rm -rf dist work cache .build
+# Remove generated state while preserving the checked-in CopperBarsOS config tree.
+rm -rf dist work cache .build chroot binary
+rm -f config/binary config/bootstrap config/chroot config/common config/source
 mkdir -p dist
 
-# Keep the OS base reproducible against Debian 13 (Trixie).
-# Explicit Debian mirrors are important when building from an Ubuntu GitHub runner;
-# otherwise live-build may inherit the host's Ubuntu mirror configuration.
 export LB_AUTO_BUILD=1
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 
 DEBIAN_MIRROR="https://deb.debian.org/debian"
 DEBIAN_SECURITY_MIRROR="https://deb.debian.org/debian-security"
 
+# Debian Trixie is the single source of truth for all live-build CLI options.
 lb config \
   --mode debian \
   --architecture amd64 \
   --distribution trixie \
+  --distribution-chroot trixie \
+  --distribution-binary trixie \
   --archive-areas "main contrib non-free non-free-firmware" \
   --mirror-bootstrap "$DEBIAN_MIRROR" \
   --mirror-chroot "$DEBIAN_MIRROR" \
@@ -89,7 +66,8 @@ lb config \
   --iso-application "CopperBarsOS" \
   --iso-publisher "CopperBarsOS Project" \
   --iso-volume "COPPERBARSOS" \
-  --memtest none
+  --memtest none \
+  --uefi-secure-boot auto
 
 lb build
 

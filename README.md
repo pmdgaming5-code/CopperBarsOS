@@ -1,79 +1,89 @@
 # CopperBarsOS
 
-**CopperBarsOS 0.9.0** is a 64-bit x86_64 Debian Live-based desktop operating system designed around a local-first AI experience.
+CopperBarsOS is a 64-bit x86_64 Debian 13 (Trixie) Live-based desktop operating system designed around a local-first AI assistant named **Copperium AI**.
 
-## CopperBars experience
+## Included
 
-- **Copperium AI** — local AI assistant with Ollama-compatible backend
-- **CopperBars Store** — curated Linux software center using APT
-- **CopperBars Center** — system, hardware, network and AI dashboard
-- **CopperBars Update** — APT updates plus GitHub Release-based CopperBarsOS updates
-- **CopperBars Windows Center** — Wine/DXVK/vkd3d Windows application compatibility
-- **CopperBars Diagnostics** — read-only hardware, graphics, audio, network, AI and Wine diagnostics
-- **CopperBars Settings** and **CopperBars Files** launch points
+- x86_64 hybrid BIOS/UEFI Live ISO workflow
+- XFCE desktop with LightDM login
+- NetworkManager, PipeWire/WirePlumber, removable media support
+- Firefox ESR, Thunar, archive tools, terminal, hardware diagnostics and system utilities
+- Calamares installer launcher
+- Copperium AI local assistant and localhost-only AI gateway
+- CopperBars Center system, AI, hardware and network dashboard
+- CopperBars Store curated APT software center
+- CopperBars Update with APT updates and signed-by-checksum GitHub Release updates
+- CopperBars Diagnostics, Settings and Windows Compatibility tools
+- Wine 64-bit plus 32-bit multiarch support
+- wine-binfmt for Windows executable integration
+- Winetricks for compatibility components
+- DXVK for Direct3D 8/9/10/11 through Vulkan
+- vkd3d libraries for Direct3D 12 translation
+- Per-application Wine prefixes and one-click `.exe` launching
+- Automated syntax, policy, artifact, checksum and QEMU smoke validation
 
-## GitHub-based OS updates
+## Base system
 
-CopperBars Update checks the public GitHub Releases API for `pmdgaming5-code/CopperBarsOS`.
+CopperBarsOS is built from Debian 13 (Trixie) packages with `live-build`. The build configuration is pinned to `trixie` rather than the moving `stable` alias so that the ISO base stays reproducible throughout the release cycle.
 
-A release can contain:
+## Local AI
 
-```text
-CopperBarsOS-x86_64.iso
-CopperBarsOS-x86_64.iso.sha256
-CopperBarsOS-<version>-update.tar.gz
-CopperBarsOS-<version>-update.tar.gz.sha256
-```
+Copperium AI runs locally. The gateway binds only to `127.0.0.1:8765` and reports the real model/backend state. Ollama can be used as the local backend, and the first-run setup lets the user select a local model profile.
 
-The desktop updater downloads the update bundle, validates its SHA-256, validates archive paths, stages it in a temporary folder, requests administrator permission, creates a rollback backup under `/var/backups/copperbars/`, and then applies only the CopperBarsOS overlay. The privileged helper verifies the SHA-256 again before installation.
+No model weights are stored in Git.
 
-APT package updates and CopperBarsOS release updates are intentionally separate.
+## Windows applications
 
-## Windows compatibility
+CopperBarsOS uses Wine rather than bundling Windows. Wine provides the Windows API compatibility layer; 32-bit and 64-bit components are both installed. DXVK and vkd3d provide the supported Direct3D translation paths. Each application can have its own Wine prefix so a broken configuration does not affect unrelated applications.
 
-CopperBarsOS uses Wine rather than a Microsoft Windows runtime. Wine is the Windows API compatibility layer for Linux; DXVK handles Direct3D 8/9/10/11 through Vulkan and vkd3d provides Direct3D 12 translation. Each application can use its own Wine prefix.
+Compatibility is not identical to a native Windows installation: software that depends on unsupported Windows kernel drivers, some DRM systems, certain anti-cheat components or Windows-only internals can still fail.
 
-This aims for high practical compatibility, but it does not claim that every Windows application is identical to native Windows. Programs depending on unsupported Windows kernel drivers, certain DRM/anti-cheat mechanisms, or proprietary low-level Windows internals may still fail.
+## CopperBars Update
+
+CopperBars Update checks the latest public GitHub Release from this repository. An OS release is installable only when the release provides both:
+
+- `CopperBarsOS-<version>-update.tar.gz`
+- `CopperBarsOS-<version>-update.tar.gz.sha256`
+
+The update package is downloaded, SHA-256 verified in the desktop application, verified again by the privileged updater, checked for unsafe archive paths, staged, backed up and then applied as a restricted overlay. A rollback backup is kept under `/var/backups/copperbars/`.
+
+APT package updates and CopperBarsOS release updates are separate operations.
 
 ## Building
 
-On an x86_64 Debian/Ubuntu builder:
+Use an x86_64 Debian/Ubuntu builder with live-build:
 
 ```bash
 sudo apt update
-sudo apt install -y live-build debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools dosfstools
-chmod +x build.sh tools/build-update-bundle.sh
+sudo apt install -y live-build debootstrap squashfs-tools xorriso grub-pc-bin grub-efi-amd64-bin mtools dosfstools qemu-system-x86 qemu-utils ovmf shellcheck python3
 ./build.sh
-./tools/build-update-bundle.sh
 ```
 
-Output:
+Artifacts:
 
 ```text
 dist/CopperBarsOS-x86_64.iso
 dist/CopperBarsOS-x86_64.iso.sha256
-dist/CopperBarsOS-0.9.0-update.tar.gz
-dist/CopperBarsOS-0.9.0-update.tar.gz.sha256
 ```
 
-## GitHub release automation
+The GitHub Actions ISO workflow performs the same validation, creates the update bundle and runs a BIOS/QEMU smoke test.
 
-`.github/workflows/release.yml` builds the ISO, builds the verified update bundle, performs artifact checks, runs a QEMU BIOS smoke test and publishes the assets when a `vX.Y.Z` tag is pushed. The workflow is also manually runnable for CI artifact generation.
+## Release model
 
-## Local AI
-
-The first desktop session opens a CopperBars setup screen with several local model choices. The selected model is stored in `/var/lib/copperbars/model.conf` and Copperium AI reads it at runtime.
-
-The AI gateway listens only on `127.0.0.1:8765` and reports its real local model state. No cloud account is required for the core assistant.
-
-## Security
-
-The Copperium AI service runs as an unprivileged `copper` account with systemd sandboxing. The release updater never executes arbitrary downloaded scripts; it accepts only the expected release bundle layout and verifies SHA-256 both before and after crossing the privilege boundary.
+The release workflow is tag-based. A tag such as `v0.9.0` must match the repository `VERSION` file exactly. The workflow builds the ISO, creates the update bundle, verifies all checksums, runs the QEMU smoke test and publishes the artifacts to the GitHub Release.
 
 ## Validation
 
-GitHub Actions checks Python syntax, shell syntax, JSON, version consistency, CopperBars branding, Wine/DXVK support, release updater safety and the local-only AI policy. The build workflow additionally verifies the ISO checksum and boots it under QEMU for a short BIOS smoke test.
+CI validates:
 
-## Hardware testing note
+- executable build/hook scripts
+- Bash syntax and ShellCheck for build helpers
+- Python syntax
+- Store catalog JSON
+- Copperium AI localhost policy
+- Wine 32/64-bit compatibility stack
+- ISO existence, checksum and xorriso readability
+- update bundle checksum
+- QEMU BIOS boot smoke test
 
-A final desktop/driver/install experience still needs physical hardware testing because GPU drivers, Wi-Fi firmware, audio devices, suspend/resume, installer behavior and Windows application compatibility cannot be fully proven from source-only CI.
+A physical hardware validation pass is still required for GPU drivers, firmware, Wi-Fi, suspend/resume and application-specific Windows compatibility.

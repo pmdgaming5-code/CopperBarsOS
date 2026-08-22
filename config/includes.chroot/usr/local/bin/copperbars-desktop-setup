@@ -1,0 +1,42 @@
+#!/bin/sh
+set -eu
+
+# CopperBars desktop session bootstrap.
+# Applies the shipped panel profile once per user, then installs ergonomic
+# keyboard shortcuts for Windows/macOS migrants and Copperium Spotlight.
+
+STAMP="$HOME/.config/copperbars/desktop-v2"
+PROFILE="/usr/share/xfce4-panel-profiles/layouts/CopperBarsOS.tar.bz2"
+mkdir -p "$(dirname "$STAMP")"
+
+command -v xfconf-query >/dev/null 2>&1 || exit 0
+command -v xfce4-panel-profiles >/dev/null 2>&1 || exit 0
+
+if [ ! -f "$STAMP" ] && [ -r "$PROFILE" ]; then
+    # Remove stale launcher directories so profile launcher entries resolve
+    # deterministically for the new CopperBars layout.
+    rm -rf "$HOME/.config/xfce4/panel/launcher-"* 2>/dev/null || true
+    xfce4-panel-profiles load "$PROFILE" >/dev/null 2>&1 || true
+    touch "$STAMP"
+fi
+
+# Familiar Windows-style shortcuts.
+xfconf-query -c xfce4-keyboard-shortcuts -p '/commands/custom/Super_L' \
+    --create -t string -s 'xfce4-popup-whiskermenu' >/dev/null 2>&1 || true
+xfconf-query -c xfce4-keyboard-shortcuts -p '/commands/custom/<Super>e' \
+    --create -t string -s 'thunar' >/dev/null 2>&1 || true
+xfconf-query -c xfce4-keyboard-shortcuts -p '/commands/custom/<Super>r' \
+    --create -t string -s 'xfce4-appfinder --collapsed' >/dev/null 2>&1 || true
+xfconf-query -c xfce4-keyboard-shortcuts -p '/commands/custom/<Super><Shift>s' \
+    --create -t string -s 'xfce4-screenshooter -r' >/dev/null 2>&1 || true
+
+# CopperBars identity: Alt+Space is reserved for Copperium Spotlight.
+if command -v copperium-spotlight >/dev/null 2>&1; then
+    xfconf-query -c xfce4-keyboard-shortcuts \
+      -p '/commands/custom/<Alt>space' --create -t string \
+      -s 'copperium-spotlight' >/dev/null 2>&1 || true
+fi
+
+# Apply the panel profile immediately when possible.
+command -v xfce4-panel >/dev/null 2>&1 && xfce4-panel -r >/dev/null 2>&1 || true
+exit 0

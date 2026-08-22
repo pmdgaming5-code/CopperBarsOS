@@ -21,15 +21,31 @@ command -v lb >/dev/null || {
 
 # Debian Trixie's live-build is the supported builder. Fail early instead of
 # accidentally using an older host distro implementation with different CLI semantics.
-lb_version="$(lb --version 2>&1 | head -n1)"
-case "$lb_version" in
-  *3.0~a5*) ;;
-  *)
-    echo "Unsupported live-build: $lb_version" >&2
-    echo "CopperBarsOS requires the Debian Trixie live-build package (1:20250505+deb13u1 or newer)." >&2
+LB_MIN_VERSION="20250505+deb13u1"
+LB_VERSION="$(lb --version 2>&1 | head -n1)"
+if command -v dpkg >/dev/null 2>&1; then
+  if ! dpkg --compare-versions "$LB_VERSION" ge "$LB_MIN_VERSION"; then
+    echo "Unsupported live-build: $LB_VERSION" >&2
+    echo "CopperBarsOS requires Debian Trixie's live-build ($LB_MIN_VERSION or newer)." >&2
     exit 1
-    ;;
-esac
+  fi
+else
+  case "$LB_VERSION" in
+    2025*|2026*) ;;
+    *)
+      echo "Unsupported live-build: $LB_VERSION" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+for option in --distribution-chroot --distribution-binary; do
+  if ! lb config --help 2>&1 | grep -Fq -- "$option"; then
+    echo "Installed live-build does not support required option: $option" >&2
+    echo "Detected live-build: $LB_VERSION" >&2
+    exit 1
+  fi
+done
 
 # Remove generated state while preserving the checked-in CopperBarsOS config tree.
 rm -rf dist work cache .build chroot binary

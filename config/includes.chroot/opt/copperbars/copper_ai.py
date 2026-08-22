@@ -4,14 +4,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 import pathlib
+import urllib.parse
 import urllib.request
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("COPPER_PORT", "8765"))
 MODEL_DIR = pathlib.Path(os.environ.get("COPPER_MODEL_DIR", "/opt/copperbars/models"))
 MODEL_CONFIG = pathlib.Path("/var/lib/copperbars/model.conf")
-OLLAMA_URL = os.environ.get("COPPER_OLLAMA_URL", "http://127.0.0.1:11434")
-VERSION = "0.2.0"
+OLLAMA_URL = "http://127.0.0.1:11434"
+VERSION = "0.2.1"
 
 SYSTEM_PROMPT = (
     "You are Copperium AI, the local AI assistant built into CopperBarsOS. "
@@ -36,18 +37,19 @@ def installed_models():
     if not MODEL_DIR.exists():
         return []
     return sorted(
-        p.name for p in MODEL_DIR.iterdir()
+        p.name
+        for p in MODEL_DIR.iterdir()
         if p.is_file() and p.suffix.lower() == ".gguf"
     )
 
 
 def ollama_status():
     try:
-        request = urllib.request.Request(OLLAMA_URL.rstrip("/") + "/api/tags", method="GET")
+        request = urllib.request.Request(f"{OLLAMA_URL}/api/tags", method="GET")
         with urllib.request.urlopen(request, timeout=3) as response:
             data = json.load(response)
         return {"reachable": True, "models": data.get("models", [])}
-    except Exception:
+    except (OSError, ValueError, json.JSONDecodeError):
         return {"reachable": False, "models": []}
 
 
@@ -55,16 +57,20 @@ def ollama_chat(message):
     model = selected_model()
     if not model:
         return None
-    payload = json.dumps({
-        "model": model,
-        "stream": False,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": message},
-        ],
-    }, ensure_ascii=False).encode("utf-8")
+
+    payload = json.dumps(
+        {
+            "model": model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": message},
+            ],
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
     request = urllib.request.Request(
-        OLLAMA_URL.rstrip("/") + "/api/chat",
+        f"{OLLAMA_URL}/api/chat",
         data=payload,
         headers={"Content-Type": "application/json; charset=utf-8"},
         method="POST",
@@ -73,49 +79,62 @@ def ollama_chat(message):
         with urllib.request.urlopen(request, timeout=120) as response:
             data = json.load(response)
         return data.get("message", {}).get("content")
-    except Exception:
+    except (OSError, ValueError, json.JSONDecodeError):
         return None
 
 
 class Handler(BaseHTTPRequestHandler):
+    server_version = "CopperiumAI/0.2"
+
     def _json(self, status, data):
         raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(raw)
 
+    def _path(self):
+        return urllib.parse.urlsplit(self.path).path
+
     def do_GET(self):
-        if self.path == "/health":
+        if self._path() == "/health":
             model = selected_model()
             ollama = ollama_status() if model else {"reachable": False, "models": []}
-            self._json(200, {
-                "ok": True,
-                "service": "Copperium AI",
-                "version": VERSION,
-                "models": installed_models(),
-                "model": model,
-                "backend": "ollama" if model else "none",
-                "ollama_reachable": ollama["reachable"],
-                "local_only": True,
-            })
+            self._json(
+                200,
+                {
+                    "ok": True,
+                    "service": "Copperium AI",
+                    "version": VERSION,
+                    "models": installed_models(),
+                    "model": model,
+                    "backend": "ollama" if model else "none",
+                    "ollama_reachable": ollama["reachable"],
+                    "local_only": True,
+                },
+            )
             return
         self._json(404, {"error": "not found"})
 
     def do_POST(self):
-        if self.path != "/chat":
+        if self._path() != "/chat":
             self._json(404, {"error": "not found"})
             return
+
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length <= 0 or length > 1024 * 1024:
                 raise ValueError("invalid content length")
             body = json.loads(self.rfile.read(length) or b"{}")
-            message = str(body.get("message", "")).strip()
-            if not message or len(message) > 20000:
+            message = body.get("message", "")
+            if not isinstance(message, str):
+                raise ValueError("message must be a string")
+            message = message.strip()
+            if not message or len(message) > 20_000:
                 raise ValueError("invalid message")
-        except (ValueError, json.JSONDecodeError):
+        except (ValueError, TypeError, json.JSONDecodeError):
             self._json(400, {"error": "invalid request"})
             return
 
@@ -123,14 +142,25 @@ class Handler(BaseHTTPRequestHandler):
         answer = ollama_chat(message)
         if answer is None:
             if model:
-                answer = "Copperium AI seçilen yerel modele bağlanamadı. CopperBars Center üzerinden AI durumunu kontrol et."
+                answer = (
+                    "Copperium AI seçilen yerel modele bağlanamadı. "
+                    "CopperBars Center üzerinden AI durumunu kontrol et."
+                )
             else:
                 answer = (
                     "Merhaba! Ben Copperium AI. Henüz bir yerel AI modeli seçilmemiş. "
                     "CopperBars ilk kurulumundan model seçebilir veya CopperBars Center'dan "
                     "yerel model yapılandırabilirsin."
                 )
-        self._json(200, {"answer": answer, "local": True, "model": model, "service": "Copperium AI"})
+        self._json(
+            200,
+            {
+                "answer": answer,
+                "local": True,
+                "model": model,
+                "service": "Copperium AI",
+            },
+        )
 
     def log_message(self, *_):
         return

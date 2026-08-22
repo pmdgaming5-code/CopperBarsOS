@@ -20,6 +20,42 @@ command -v lb >/dev/null || {
   exit 1
 }
 
+# Guard against distro-specific live-build packages silently accepting an
+# incompatible configuration. This is intentionally checked before any state
+# is generated so a broken runner fails with an actionable message.
+required_lb_options=(
+  --mode
+  --architecture
+  --distribution
+  --archive-areas
+  --mirror-bootstrap
+  --mirror-chroot
+  --mirror-binary
+  --mirror-chroot-security
+  --mirror-binary-security
+  --binary-images
+  --bootappend-live
+  --debian-installer
+  --apt-recommends
+  --apt-secure
+  --linux-flavours
+  --firmware-binary
+  --firmware-chroot
+  --iso-application
+  --iso-publisher
+  --iso-volume
+  --memtest
+)
+
+lb_help="$(lb config --help 2>&1 || true)"
+for option in "${required_lb_options[@]}"; do
+  if ! grep -Fq -- "$option" <<<"$lb_help"; then
+    echo "Installed live-build does not support required option: $option" >&2
+    echo "Detected live-build: $(lb --version 2>&1 | head -n1)" >&2
+    exit 1
+  fi
+done
+
 rm -rf dist work cache .build
 mkdir -p dist
 

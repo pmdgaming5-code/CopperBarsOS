@@ -60,6 +60,24 @@ jobs:
               lb config --help 2>&1 | grep -Fq -- "--distribution-chroot"
               lb config --help 2>&1 | grep -Fq -- "--distribution-binary"
 
+              # Preflight every package named by the live image before the expensive build.
+              # Trixie uses a real multi-arch package set for Wine/DXVK compatibility.
+              dpkg --add-architecture i386
+              apt-get update
+              check_package() {
+                pkg="$1"
+                candidate="$(apt-cache policy "$pkg" | awk "/^  Candidate:/ {print \$2; exit}")"
+                if [ -z "$candidate" ] || [ "$candidate" = "(none)" ]; then
+                  echo "No install candidate for package: $pkg" >&2
+                  exit 1
+                fi
+              }
+              while IFS= read -r pkg; do
+                check_package "$pkg"
+              done < <(sed -e "s/#.*$//" -e "/^[[:space:]]*$/d" config/package-lists/copperbars.list.chroot)
+              check_package "wine32:i386"
+              check_package "dxvk-wine32:i386"
+
               bash -n build.sh
               bash -n tools/build-update-bundle.sh
               find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n

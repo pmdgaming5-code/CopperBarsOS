@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publish current ISO run status target
+      - name: Locate ISO workflow run
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -37,10 +37,13 @@ jobs:
             echo "Could not locate the ISO workflow run for $GITHUB_SHA" >&2
             exit 1
           fi
+          printf '%s\n' "$ISO_RUN_ID" > /tmp/copperbarsos-iso-run-id
+          printf '%s\n' "$ISO_URL" > /tmp/copperbarsos-iso-run-url
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=pending \
+            -f target_url="$ISO_URL" \
             -f context='CopperBarsOS ISO Build' \
-            -f description="ISO workflow run ${ISO_RUN_ID} (${ISO_URL})"
+            -f description="ISO workflow run ${ISO_RUN_ID} is in progress"
 
       - name: Install validators
         run: sudo apt-get update && sudo apt-get install -y shellcheck
@@ -108,3 +111,40 @@ jobs:
             echo 'Unexpected remote curl usage found.' >&2
             exit 1
           fi
+
+      - name: Finalize ISO commit status
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ISO_RUN_ID="$(cat /tmp/copperbarsos-iso-run-id)"
+          ISO_URL="$(cat /tmp/copperbarsos-iso-run-url)"
+          for _ in $(seq 1 90); do
+            INFO="$(gh run view "$ISO_RUN_ID" --json status,conclusion 2>/dev/null || true)"
+            STATUS="$(printf '%s' "$INFO" | jq -r '.status // empty')"
+            CONCLUSION="$(printf '%s' "$INFO" | jq -r '.conclusion // empty')"
+            if [ "$STATUS" = "completed" ]; then
+              break
+            fi
+            sleep 5
+          done
+          INFO="$(gh run view "$ISO_RUN_ID" --json status,conclusion)"
+          STATUS="$(printf '%s' "$INFO" | jq -r '.status')"
+          CONCLUSION="$(printf '%s' "$INFO" | jq -r '.conclusion')"
+          if [ "$STATUS" != "completed" ]; then
+            STATE=failure
+            DESCRIPTION="ISO run ${ISO_RUN_ID} did not complete within the validation window"
+          elif [ "$CONCLUSION" = "success" ]; then
+            STATE=success
+            DESCRIPTION="ISO run ${ISO_RUN_ID} completed successfully"
+          else
+            STATE=failure
+            DESCRIPTION="ISO run ${ISO_RUN_ID} completed with conclusion ${CONCLUSION}"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$STATE" \
+            -f target_url="$ISO_URL" \
+            -f context='CopperBarsOS ISO Build' \
+            -f description="$DESCRIPTION"
+          [ "$STATE" = success ]

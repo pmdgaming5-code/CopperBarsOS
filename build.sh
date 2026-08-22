@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# live-build needs root privileges for chroot, mount and filesystem operations.
+# Re-exec with sudo when invoked by a normal user so local builds are less error-prone.
+if [[ "$(id -u)" -ne 0 ]]; then
+  exec sudo -E -- "$0" "$@"
+fi
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 

@@ -45,10 +45,13 @@ jobs:
           python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null
 
       - name: Build ISO
-        run: ./build.sh
+        run: sudo ./build.sh
 
       - name: Build update bundle
-        run: ./tools/build-update-bundle.sh
+        run: sudo ./tools/build-update-bundle.sh
+
+      - name: Normalize artifact ownership
+        run: sudo chown -R "$(id -u):$(id -g)" dist
 
       - name: Validate artifacts
         run: |

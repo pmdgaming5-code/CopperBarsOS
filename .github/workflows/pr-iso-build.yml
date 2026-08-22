@@ -1,0 +1,124 @@
+name: CopperBarsOS PR ISO Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: copperbarsos-pr-iso-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      SOURCE_DATE_EPOCH: "0"
+      DEBIAN_BUILDER: "debian:trixie-20260803@sha256:d8f17b92dc7ff10f9c1fdecab0ad21103d1d24aed823c3a0359e4f50adfab3eb"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build inside pinned Debian Trixie
+        run: |
+          set -euo pipefail
+          docker pull "$DEBIAN_BUILDER"
+          docker run --rm --privileged \
+            --shm-size=4g \
+            --tmpfs /tmp:exec \
+            --tmpfs /var/tmp:exec \
+            -e SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            "$DEBIAN_BUILDER" \
+            bash -euxo pipefail -c '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                live-build debootstrap squashfs-tools xorriso \
+                grub-pc-bin grub-efi-amd64-bin mtools dosfstools \
+                qemu-system-x86 qemu-utils ovmf shellcheck python3 \
+                ca-certificates file
+
+              lb_version="$(lb --version 2>&1 | head -n1)"
+              dpkg --compare-versions "$lb_version" ge "20250505+deb13u1"
+              lb config --help 2>&1 | grep -Fq -- "--distribution-chroot"
+              lb config --help 2>&1 | grep -Fq -- "--distribution-binary"
+
+              dpkg --add-architecture i386
+              apt-get update
+              check_package() {
+                pkg="$1"
+                candidate="$(apt-cache policy "$pkg" | awk "/^  Candidate:/ {print \$2; exit}")"
+                if [ -z "$candidate" ] || [ "$candidate" = "(none)" ]; then
+                  echo "No install candidate for package: $pkg" >&2
+                  exit 1
+                fi
+              }
+              while IFS= read -r pkg; do
+                check_package "$pkg"
+              done < <(sed -e "s/#.*$//" -e "/^[[:space:]]*$/d" config/package-lists/copperbars.list.chroot)
+              check_package "wine32:i386"
+              check_package "dxvk-wine32:i386"
+
+              bash -n build.sh
+              bash -n tools/build-update-bundle.sh
+              find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
+              shellcheck build.sh tools/build-update-bundle.sh
+              python3 -m compileall -q config/includes.chroot/opt/copperbars
+              python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null
+
+              ./build.sh
+              ./tools/build-update-bundle.sh
+            '
+
+      - name: Normalize artifact ownership
+        run: sudo chown -R "$(id -u):$(id -g)" dist
+
+      - name: Verify artifacts
+        run: |
+          set -euo pipefail
+          test -s dist/CopperBarsOS-x86_64.iso
+          test -s dist/CopperBarsOS-x86_64.iso.sha256
+          sha256sum -c dist/CopperBarsOS-x86_64.iso.sha256
+          shopt -s nullglob
+          bundles=(dist/CopperBarsOS-*-update.tar.gz)
+          checksums=(dist/CopperBarsOS-*-update.tar.gz.sha256)
+          test "${#bundles[@]}" -eq 1
+          test "${#checksums[@]}" -eq 1
+          sha256sum -c "${checksums[0]}"
+          file dist/CopperBarsOS-x86_64.iso
+          xorriso -indev dist/CopperBarsOS-x86_64.iso -toc >/tmp/copperbarsos-pr-iso-toc.txt
+          test -s /tmp/copperbarsos-pr-iso-toc.txt
+
+      - name: QEMU BIOS smoke test
+        run: |
+          set +e
+          timeout 60s qemu-system-x86_64 \
+            -machine accel=tcg:tcg \
+            -m 2048 \
+            -smp 2 \
+            -cdrom dist/CopperBarsOS-x86_64.iso \
+            -boot d \
+            -display none \
+            -serial stdio
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then
+            exit "$code"
+          fi
+
+      - name: Upload ISO and update bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: CopperBarsOS-PR-${{ github.event.pull_request.number }}-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            dist/CopperBarsOS-x86_64.iso
+            dist/CopperBarsOS-x86_64.iso.sha256
+            dist/CopperBarsOS-*-update.tar.gz
+            dist/CopperBarsOS-*-update.tar.gz.sha256
+          retention-days: 14

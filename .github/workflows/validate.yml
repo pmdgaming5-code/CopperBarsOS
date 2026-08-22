@@ -67,6 +67,8 @@ jobs:
           test -f build.sh
           test -f config/includes.chroot/etc/systemd/system/copper-ai.service
           test -f config/includes.chroot/etc/systemd/system/copper-firstboot.service
+          test -f config/includes.chroot/etc/xdg/autostart/copperbars-desktop-setup.desktop
+          test -f config/includes.chroot/etc/skel/.config/gtk-3.0/gtk.css
           test -f config/includes.chroot/opt/copperbars/copper_ai.py
           test -f config/includes.chroot/opt/copperbars/copper_assistant.py
           test -f config/includes.chroot/opt/copperbars/copper_center.py
@@ -79,10 +81,26 @@ jobs:
           test -f config/includes.chroot/usr/local/bin/copper-model-setup
           test -f config/includes.chroot/usr/local/bin/copper-exe-handler
           test -f config/includes.chroot/usr/local/bin/copperbars-release-updater
+          test -f config/includes.chroot/usr/local/bin/copperbars-desktop-setup
+          test -f config/includes.chroot/usr/local/bin/copperium-spotlight
+          test -f config/includes.chroot/usr/share/copperbars/panel/config.txt
           test -f config/hooks/normal/020-wine-multiarch.hook.chroot
+          test -f config/hooks/normal/9850-copperbars-panel-profile.hook.chroot
           test -f tools/build-update-bundle.sh
           test -f .github/workflows/build.yml
           test -f .github/workflows/release.yml
+
+      - name: CopperBars desktop profile consistency
+        run: |
+          grep -q "^/plugins/plugin-1 'whiskermenu'" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "copper-assistant.desktop" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "copper-store.desktop" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "copper-center.desktop" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "copper-files.desktop" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "^/plugins/plugin-7 'tasklist'" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "^/plugins/plugin-8 'separator'" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "^/plugins/plugin-13 'actions'" config/includes.chroot/usr/share/copperbars/panel/config.txt
+          grep -q "CopperBarsOS.tar.bz2" config/hooks/normal/9850-copperbars-panel-profile.hook.chroot
 
       - name: Version validation
         run: |

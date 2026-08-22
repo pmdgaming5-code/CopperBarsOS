@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=CopperBars Store
-Name[tr]=CopperBars Mağazası
-Comment=Install and manage selected CopperBarsOS applications
+Name[tr]=CopperBars Store
+Comment=Install and manage CopperBarsOS applications
 Comment[tr]=CopperBarsOS uygulamalarını kur ve yönet
 Exec=/usr/bin/python3 /opt/copperbars/copper_store.py
 Icon=system-software-install

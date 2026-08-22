@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: copperbarsos-pr-iso-${{ github.event.pull_request.number }}
@@ -22,6 +22,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Publish run locator
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/copperbarsos-ci-observer
+          if git clone --depth 1 --branch ci-observer "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/copperbarsos-ci-observer; then
+            :
+          else
+            mkdir -p /tmp/copperbarsos-ci-observer
+            git -C /tmp/copperbarsos-ci-observer init
+            git -C /tmp/copperbarsos-ci-observer checkout --orphan ci-observer
+          fi
+          git -C /tmp/copperbarsos-ci-observer config user.name "github-actions[bot]"
+          git -C /tmp/copperbarsos-ci-observer config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/copperbarsos-ci-observer/.ci
+          cat > /tmp/copperbarsos-ci-observer/.ci/latest-run.json <<EOF
+          {"run_id":${GITHUB_RUN_ID},"run_number":${GITHUB_RUN_NUMBER},"sha":"${GITHUB_SHA}","event":"${GITHUB_EVENT_NAME}","updated":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+          EOF
+          git -C /tmp/copperbarsos-ci-observer add .ci/latest-run.json
+          git -C /tmp/copperbarsos-ci-observer commit -m "ci: record latest PR ISO run" --allow-empty
+          git -C /tmp/copperbarsos-ci-observer push origin HEAD:ci-observer
 
       - name: Build inside pinned Debian Trixie
         run: |

@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+# Copperium Spotlight: CopperBars' fast, keyboard-first application finder.
+# It intentionally uses the Xfce app finder underneath for stability and
+# accessibility while giving Copperium a distinct OS-level entry point.
+exec xfce4-appfinder --collapsed "$@"

@@ -31,10 +31,10 @@ xfconf-query -c xfce4-keyboard-shortcuts -p '/commands/custom/<Super><Shift>s' \
     --create -t string -s 'xfce4-screenshooter -r' >/dev/null 2>&1 || true
 
 # CopperBars identity: Alt+Space is reserved for Copperium Spotlight.
-if command -v copperium-spotlight >/dev/null 2>&1; then
+if [ -f /usr/local/bin/copperium-spotlight ]; then
     xfconf-query -c xfce4-keyboard-shortcuts \
       -p '/commands/custom/<Alt>space' --create -t string \
-      -s 'copperium-spotlight' >/dev/null 2>&1 || true
+      -s 'sh /usr/local/bin/copperium-spotlight' >/dev/null 2>&1 || true
 fi
 
 # Apply the panel profile immediately when possible.

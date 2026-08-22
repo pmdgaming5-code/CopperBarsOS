@@ -7,6 +7,9 @@ network-manager-gnome
 xorg
 xfce4
 xfce4-goodies
+xfce4-panel-profiles
+xfce4-whiskermenu-plugin
+xfce4-docklike-plugin
 lightdm
 lightdm-gtk-greeter
 calamares

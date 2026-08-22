@@ -16,11 +16,15 @@ jobs:
       - name: Shell syntax check
         run: |
           bash -n build.sh
+          bash -n tools/build-update-bundle.sh
           find config/includes.chroot/usr/local/bin config/hooks -type f -print0 | xargs -0 -n1 sh -n
       - name: Required files
         run: |
           test -f README.md
+          test -f VERSION
           test -f build.sh
+          test -f tools/build-update-bundle.sh
+          test -f config/includes.chroot/opt/copperbars/version
           test -f config/includes.chroot/etc/systemd/system/copper-ai.service
           test -f config/includes.chroot/etc/systemd/system/copper-firstboot.service
           test -f config/includes.chroot/opt/copperbars/copper_ai.py
@@ -34,27 +38,31 @@ jobs:
           test -f config/includes.chroot/opt/copperbars/apps.json
           test -f config/includes.chroot/usr/local/bin/copper-model-setup
           test -f config/includes.chroot/usr/local/bin/copper-exe-handler
+          test -f config/includes.chroot/usr/local/bin/copperbars-release-updater
           test -f config/hooks/normal/020-wine-multiarch.hook.chroot
-          test -f config/includes.chroot/usr/share/applications/copper-center.desktop
-          test -f config/includes.chroot/usr/share/applications/copper-store.desktop
-          test -f config/includes.chroot/usr/share/applications/copper-assistant.desktop
-          test -f config/includes.chroot/usr/share/applications/copper-windows.desktop
-          test -f config/includes.chroot/usr/share/applications/copper-updates.desktop
-          test -f config/includes.chroot/usr/share/applications/copper-diagnostics.desktop
-          test -f config/includes.chroot/usr/share/applications/copper-settings.desktop
-          test -f config/includes.chroot/usr/share/applications/copper-files.desktop
+          test -f .github/workflows/release.yml
+      - name: Version consistency
+        run: |
+          test "$(tr -d '\r\n' < VERSION)" = "$(tr -d '\r\n' < config/includes.chroot/opt/copperbars/version)"
       - name: Branding checks
         run: |
-          grep -q 'Copperium AI' config/includes.chroot/opt/copperbars/copper_ai.py
-          grep -q 'Name=Copperium AI' config/includes.chroot/usr/share/applications/copper-assistant.desktop
+          grep -q 'Copperium AI' config/includes.chroot/usr/share/applications/copper-assistant.desktop
           grep -q 'Name=CopperBars Store' config/includes.chroot/usr/share/applications/copper-store.desktop
           grep -q 'Name=CopperBars Center' config/includes.chroot/usr/share/applications/copper-center.desktop
+          grep -q 'Name=CopperBars Update' config/includes.chroot/usr/share/applications/copper-updates.desktop
       - name: Wine compatibility checks
         run: |
           grep -q '^wine$' config/package-lists/copperbars.list.chroot
-          grep -q '^wine-binfmt$' config/package-lists/copperbars.list.chroot
+          grep -q '^wine64$' config/package-lists/copperbars.list.chroot
           grep -q '^wine32:i386$' config/package-lists/copperbars.list.chroot
+          grep -q '^wine-binfmt$' config/package-lists/copperbars.list.chroot
           grep -q '^dxvk-wine32:i386$' config/package-lists/copperbars.list.chroot
+      - name: Release updater safety checks
+        run: |
+          grep -q 'sha256sum' config/includes.chroot/usr/local/bin/copperbars-release-updater
+          grep -q 'mktemp' config/includes.chroot/usr/local/bin/copperbars-release-updater
+          grep -q 'sha256' config/includes.chroot/opt/copperbars/copper_updates.py
+          grep -q 'releases/latest' config/includes.chroot/opt/copperbars/copper_updates.py
       - name: Local-only AI policy
         run: |
           grep -q '127.0.0.1' config/includes.chroot/opt/copperbars/copper_ai.py

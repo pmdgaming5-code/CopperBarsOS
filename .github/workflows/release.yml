@@ -67,7 +67,7 @@ jobs:
 
               bash -n build.sh
               bash -n tools/build-update-bundle.sh
-              find config/hooks config.includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
+              find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
               shellcheck build.sh tools/build-update-bundle.sh
               python3 -m compileall -q config/includes.chroot/opt/copperbars
               python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null

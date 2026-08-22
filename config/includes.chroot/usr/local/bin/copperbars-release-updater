@@ -27,9 +27,9 @@ EXPECTED_SHA=$(printf '%s' "$EXPECTED_SHA" | tr '[:upper:]' '[:lower:]')
 
 # Reject absolute paths, parent traversal and unexpected top-level paths.
 if tar -tzf "$BUNDLE" | awk '
-  /^// {bad=1}
-  /(^|\/)[.][.]\// {bad=1}
-  /(^|\/)[.][.]$/ {bad=1}
+  /^\// {bad=1}
+  /(^|\/)\.\.\// {bad=1}
+  /(^|\/)\.\.$/ {bad=1}
   {split($0,p,"/"); if (p[1] != "opt" && p[1] != "etc" && p[1] != "usr") bad=1}
   END {exit bad}
 '; then :; else
@@ -40,7 +40,7 @@ fi
 mkdir -p "$STAGE" "$BACKUP"
 tar -xzf "$BUNDLE" -C "$STAGE" --no-same-owner --no-same-permissions
 
-# Keep a rollback snapshot of the exact payload trees before replacing them.
+# Keep a rollback snapshot of the payload trees before replacing them.
 for path in opt/copperbars etc/systemd/system/copper-ai.service etc/systemd/system/copper-firstboot.service usr/local/bin usr/share/applications; do
   if [ -e "/$path" ]; then
     mkdir -p "$BACKUP/$(dirname "$path")"

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=CopperBars Desktop Setup
+Comment=Applies the CopperBars desktop layout and shortcuts
+Exec=/usr/local/bin/copperbars-desktop-setup
+OnlyShowIn=XFCE;
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

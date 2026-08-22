@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
-      DEBIAN_FRONTEND: noninteractive
       SOURCE_DATE_EPOCH: "0"
     steps:
       - name: Checkout
@@ -22,13 +21,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install build dependencies
+      - name: Validate build inputs on host
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            live-build debootstrap squashfs-tools xorriso \
-            grub-pc-bin grub-efi-amd64-bin mtools dosfstools \
-            qemu-system-x86 qemu-utils ovmf shellcheck python3
+          set -euo pipefail
+          test -x build.sh
+          test -x tools/build-update-bundle.sh
+          bash -n build.sh
+          bash -n tools/build-update-bundle.sh
 
       - name: Validate version
         run: |
@@ -40,23 +39,41 @@ jobs:
             exit 1
           fi
 
-      - name: Validate build inputs
+      - name: Build inside Debian Trixie
         run: |
           set -euo pipefail
-          test -x build.sh
-          test -x tools/build-update-bundle.sh
-          bash -n build.sh
-          bash -n tools/build-update-bundle.sh
-          find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
-          shellcheck build.sh tools/build-update-bundle.sh
-          python3 -m compileall -q config/includes.chroot/opt/copperbars
-          python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null
+          docker pull debian:trixie
+          docker run --rm --privileged \
+            --shm-size=4g \
+            --tmpfs /tmp:exec \
+            --tmpfs /var/tmp:exec \
+            -e SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            debian:trixie \
+            bash -euxo pipefail -c '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                live-build debootstrap squashfs-tools xorriso \
+                grub-pc-bin grub-efi-amd64-bin mtools dosfstools \
+                qemu-system-x86 qemu-utils ovmf shellcheck python3 \
+                ca-certificates file
 
-      - name: Build ISO
-        run: sudo ./build.sh
+              lb_version="$(lb --version 2>&1 | head -n1)"
+              case "$lb_version" in *3.0~a5*) ;; *) echo "Unsupported live-build: $lb_version" >&2; exit 1 ;; esac
+              lb config --help 2>&1 | grep -Fq -- "--distribution-chroot"
+              lb config --help 2>&1 | grep -Fq -- "--distribution-binary"
 
-      - name: Build GitHub update bundle
-        run: sudo ./tools/build-update-bundle.sh
+              bash -n build.sh
+              bash -n tools/build-update-bundle.sh
+              find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
+              shellcheck build.sh tools/build-update-bundle.sh
+              python3 -m compileall -q config/includes.chroot/opt/copperbars
+              python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null
+
+              ./build.sh
+              ./tools/build-update-bundle.sh
+            '
 
       - name: Normalize artifact ownership
         run: sudo chown -R "$(id -u):$(id -g)" dist

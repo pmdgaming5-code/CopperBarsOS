@@ -23,18 +23,32 @@ command -v lb >/dev/null || {
 rm -rf dist work cache .build
 mkdir -p dist
 
-# Keep the OS base reproducible against the current Debian stable release.
+# Keep the OS base reproducible against Debian Trixie.
+# Explicit Debian mirrors are important when building from an Ubuntu GitHub runner;
+# otherwise live-build may inherit the host's Ubuntu mirror configuration.
 export LB_AUTO_BUILD=1
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
 
+DEBIAN_MIRROR="https://deb.debian.org/debian"
+DEBIAN_SECURITY_MIRROR="https://deb.debian.org/debian-security"
+
 lb config \
+  --mode debian \
   --architecture amd64 \
   --distribution trixie \
+  --distribution-chroot trixie \
+  --distribution-binary trixie \
   --archive-areas "main contrib non-free non-free-firmware" \
+  --mirror-bootstrap "$DEBIAN_MIRROR" \
+  --mirror-chroot "$DEBIAN_MIRROR" \
+  --mirror-binary "$DEBIAN_MIRROR" \
+  --mirror-chroot-security "$DEBIAN_SECURITY_MIRROR" \
+  --mirror-binary-security "$DEBIAN_SECURITY_MIRROR" \
   --binary-images iso-hybrid \
   --bootappend-live "boot=live components quiet splash locales=tr_TR.UTF-8 keyboard-layouts=tr timezone=Europe/Istanbul" \
   --debian-installer none \
   --apt-recommends true \
+  --apt-secure true \
   --linux-flavours amd64 \
   --firmware-binary true \
   --firmware-chroot true \

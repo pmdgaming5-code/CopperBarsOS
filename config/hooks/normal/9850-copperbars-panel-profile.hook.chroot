@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+PROFILE_DIR=/usr/share/xfce4-panel-profiles/layouts
+PROFILE_SOURCE=/usr/share/copperbars/panel/config.txt
+PROFILE_PATH="$PROFILE_DIR/CopperBarsOS.tar.bz2"
+
+mkdir -p "$PROFILE_DIR"
+test -r "$PROFILE_SOURCE"
+
+# A panel profile is a gzip-compressed tar archive containing config.txt.
+# Generate it during the image build so the repository stays text-only and
+# the resulting ISO always has a valid profile matching the installed Xfce.
+rm -f "$PROFILE_PATH"
+tar -cjf "$PROFILE_PATH" -C "$(dirname "$PROFILE_SOURCE")" "$(basename "$PROFILE_SOURCE")"
+chmod 0644 "$PROFILE_PATH"
+
+# Keep the setup helper available for newly created users and recovery.
+chmod 0755 /usr/local/bin/copperbars-desktop-setup 2>/dev/null || true

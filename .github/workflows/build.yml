@@ -4,13 +4,18 @@ on:
   push:
     branches:
       - feature/copperbarsos-core
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# CI runs both on direct feature-branch pushes and on PRs; keep the two
+# event streams independent so one cannot cancel the other before artifact upload.
 concurrency:
-  group: copperbarsos-iso-${{ github.ref }}
+  group: copperbarsos-iso-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

@@ -23,7 +23,7 @@ command -v lb >/dev/null || {
 rm -rf dist work cache .build
 mkdir -p dist
 
-# Keep the OS base reproducible against Debian Trixie.
+# Keep the OS base reproducible against Debian 13 (Trixie).
 # Explicit Debian mirrors are important when building from an Ubuntu GitHub runner;
 # otherwise live-build may inherit the host's Ubuntu mirror configuration.
 export LB_AUTO_BUILD=1
@@ -36,8 +36,6 @@ lb config \
   --mode debian \
   --architecture amd64 \
   --distribution trixie \
-  --distribution-chroot trixie \
-  --distribution-binary trixie \
   --archive-areas "main contrib non-free non-free-firmware" \
   --mirror-bootstrap "$DEBIAN_MIRROR" \
   --mirror-chroot "$DEBIAN_MIRROR" \

@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 120
     env:
       SOURCE_DATE_EPOCH: "0"
+      DEBIAN_BUILDER: "debian:trixie-20260803@sha256:d8f17b92dc7ff10f9c1fdecab0ad21103d1d24aed823c3a0359e4f50adfab3eb"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,10 +40,10 @@ jobs:
             exit 1
           fi
 
-      - name: Build inside Debian Trixie
+      - name: Build inside pinned Debian Trixie
         run: |
           set -euo pipefail
-          docker pull debian:trixie
+          docker pull "$DEBIAN_BUILDER"
           docker run --rm --privileged \
             --shm-size=4g \
             --tmpfs /tmp:exec \
@@ -50,7 +51,7 @@ jobs:
             -e SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
-            debian:trixie \
+            "$DEBIAN_BUILDER" \
             bash -euxo pipefail -c '
               apt-get update
               DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -66,7 +67,7 @@ jobs:
 
               bash -n build.sh
               bash -n tools/build-update-bundle.sh
-              find config/hooks config/includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
+              find config/hooks config.includes.chroot/usr/local/bin -type f -print0 | xargs -0 -n1 sh -n
               shellcheck build.sh tools/build-update-bundle.sh
               python3 -m compileall -q config/includes.chroot/opt/copperbars
               python3 -m json.tool config/includes.chroot/opt/copperbars/apps.json >/dev/null

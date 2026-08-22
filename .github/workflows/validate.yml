@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   actions: read
+  statuses: write
 
 jobs:
   static:
@@ -15,28 +16,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publish current commit workflow inventory
+      - name: Publish current ISO run status target
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh run list --commit "$GITHUB_SHA" --limit 20 --json databaseId,name,workflowName,status,conclusion,headSha,event > /tmp/copperbarsos-runs.json
-          rm -rf /tmp/copperbarsos-ci-observer
-          if git clone --depth 1 --branch ci-observer "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/copperbarsos-ci-observer; then
-            :
-          else
-            mkdir -p /tmp/copperbarsos-ci-observer
-            git -C /tmp/copperbarsos-ci-observer init
-            git -C /tmp/copperbarsos-ci-observer checkout --orphan ci-observer
+          ISO_RUN_ID=""
+          ISO_URL=""
+          for _ in $(seq 1 20); do
+            RUNS="$(gh run list --workflow 'CopperBarsOS ISO Build' --commit "$GITHUB_SHA" --limit 10 --json databaseId,status,conclusion,url 2>/dev/null || true)"
+            ISO_RUN_ID="$(printf '%s' "$RUNS" | jq -r '.[0].databaseId // empty')"
+            ISO_URL="$(printf '%s' "$RUNS" | jq -r '.[0].url // empty')"
+            if [ -n "$ISO_RUN_ID" ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "$ISO_RUN_ID" ]; then
+            echo "Could not locate the ISO workflow run for $GITHUB_SHA" >&2
+            exit 1
           fi
-          git -C /tmp/copperbarsos-ci-observer config user.name "github-actions[bot]"
-          git -C /tmp/copperbarsos-ci-observer config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          mkdir -p /tmp/copperbarsos-ci-observer/.ci
-          cp /tmp/copperbarsos-runs.json /tmp/copperbarsos-ci-observer/.ci/runs.json
-          git -C /tmp/copperbarsos-ci-observer add .ci/runs.json
-          git -C /tmp/copperbarsos-ci-observer commit -m "ci: record workflow inventory" --allow-empty
-          git -C /tmp/copperbarsos-ci-observer push origin HEAD:ci-observer
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=pending \
+            -f context='CopperBarsOS ISO Build' \
+            -f description="ISO workflow run ${ISO_RUN_ID} (${ISO_URL})"
 
       - name: Install validators
         run: sudo apt-get update && sudo apt-get install -y shellcheck
